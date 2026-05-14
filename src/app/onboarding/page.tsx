@@ -37,6 +37,7 @@ type Form = {
   daysPerWeek: string;
   sessionMinutes: string;
   injuries: string[];
+  postpartumWeeks: string; // empty = N/A
 };
 
 const STEP_COUNT = 6;
@@ -65,6 +66,7 @@ export default function OnboardingPage() {
     daysPerWeek: "3",
     sessionMinutes: "45",
     injuries: [],
+    postpartumWeeks: "",
   });
 
   if (status === "loading") {
@@ -135,6 +137,7 @@ export default function OnboardingPage() {
         daysPerWeek: Number(form.daysPerWeek),
         sessionMinutes: Number(form.sessionMinutes),
         injuries: form.injuries,
+        postpartumWeeks: form.postpartumWeeks ? Number(form.postpartumWeeks) : null,
       };
       const res = await fetch("/api/profile", {
         method: "PUT",
@@ -475,6 +478,27 @@ export default function OnboardingPage() {
             <p className="text-xs text-[var(--fg-muted)]">
               Leave empty if nothing applies. You can edit these later.
             </p>
+            <hr className="border-[var(--border)] my-1" />
+            <div>
+              <label className="block">
+                <span className="block text-sm mb-1.5 text-[var(--fg-muted)]">
+                  Postpartum recovery? <span className="opacity-60">(optional)</span>
+                </span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={form.postpartumWeeks}
+                  onChange={(e) => update("postpartumWeeks", e.target.value)}
+                  min={0}
+                  max={260}
+                  placeholder="Weeks since giving birth"
+                />
+                <span className="block text-xs text-[var(--fg-muted)] mt-1.5">
+                  Optional. If set, we&apos;ll skip high-impact and heavy-bracing exercises and lean into mobility, glute activation, and breathing-based core. Always clear return-to-exercise with your healthcare provider.
+                </span>
+              </label>
+            </div>
+
           </div>
         )}
 

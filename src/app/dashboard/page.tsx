@@ -5,6 +5,12 @@ import { prisma } from "@/lib/prisma";
 import { availableExercises, inventoryFromDb } from "@/lib/equipment";
 import DashboardClient from "./DashboardClient";
 
+type EquipmentRow = {
+  type: string;
+  weightsKg: string | null;
+  label: string | null;
+};
+
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) redirect("/login");
@@ -27,10 +33,20 @@ export default async function DashboardPage() {
         user.householdId ? { householdId: user.householdId } : { id: "__never__" },
       ],
     },
-    select: { id: true, type: true, weightsKg: true, label: true },
+    select: { type: true, weightsKg: true, label: true },
   });
-  const inv = inventoryFromDb(equipmentRows);
+  const inv = inventoryFromDb(equipmentRows as EquipmentRow[]);
   const exerciseCount = availableExercises(inv).length;
+
+  // Active program (for the Workout nav row)
+  const program = await prisma.program.findFirst({
+    where: { userId: session.user.id, isActive: true },
+    select: {
+      split: true,
+      daysPerWeek: true,
+      days: { select: { id: true }, orderBy: { order: "asc" } },
+    },
+  });
 
   return (
     <DashboardClient
@@ -51,6 +67,9 @@ export default async function DashboardPage() {
       householdInviteCode={user.household?.inviteCode ?? null}
       equipmentCount={equipmentRows.length}
       exerciseCount={exerciseCount}
+      hasProgram={!!program}
+      programSplit={program ? program.split.replace(/_/g, " ") : null}
+      programDayCount={program?.days.length ?? 0}
     />
   );
 }

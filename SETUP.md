@@ -1,17 +1,16 @@
 # Gym Planner — Local Setup
 
-## What's in the app (Phase 0 + 1)
+## What's in the app (Phase 0 + 1 + 2)
 
 **Phase 0:** Auth, profile, optional households.
 
-**Phase 1:** Free-form equipment editor, curated exercise library (60+ moves), filter logic that shows only the exercises you can actually do with what you own.
+**Phase 1:** Free-form equipment editor, curated exercise library (60+ moves), filter logic that shows only the exercises you can do with what you own.
 
-Equipment → exercise filter is pure-functional and reusable for Phase 2 (plan generation) and Phase 3 (load prescription).
+**Phase 2:** Rules-based program generator. From your profile + equipment, the system picks a weekly split (full body × 2/3, upper/lower × 4, PPL × 6, etc.), assigns exercises to each day from your filtered library, and computes sets, reps, target load (rounded to weights you actually own), and rest periods based on your goal mix and experience level. Two users with different goals in the same household get genuinely different programs.
 
 ## Prerequisites
 
 - Node.js 18.18 or newer (Node 20 LTS recommended)
-- macOS, Linux, or WSL
 
 ## First-time setup
 
@@ -24,95 +23,92 @@ npm run dev
 
 Open http://localhost:3000
 
-The Equipment model was already in the Phase 0 schema, so no new `prisma db push` is needed beyond the initial one.
+## Schema changes from Phase 2
+
+The Phase 2 schema added three new tables: `Program`, `ProgramDay`, `ProgramItem`, plus a relation on `User`. You must re-run `npx prisma db push` to apply them locally (no data loss).
 
 ## What to try
 
-1. Sign up → walk the 6-step onboarding → land on the dashboard
-2. Tap the **Equipment** card → add your dumbbells (e.g. 2, 5, 10 kg) and anything else you own
-3. Back to dashboard, tap **Exercises** → see the filtered library grouped by movement pattern
-4. Add a kettlebell or remove dumbbells → notice the exercise list updates accordingly
+1. Sign up → onboarding → dashboard
+2. Add some equipment (e.g. dumbbells 2/5/10kg, a bench, a yoga mat)
+3. Tap **Workout** on the dashboard → "Generate my program"
+4. You'll land on Day 1 of your generated program. Use the day pills at the top to flip between training days.
+5. Each exercise shows sets × reps, load (rounded to your dumbbells), rest, and an expandable form-cues section.
+6. Tap **Regenerate program** at the bottom to refresh after changing equipment or profile.
 
-The exercise count on the dashboard updates from the server on each page load, so after adding equipment, navigate back to `/dashboard` to see it bump.
+For testing the goal differentiation: create a second account, choose different goals (e.g. fat_loss + endurance vs strength + muscle_gain), and compare the generated programs.
 
 ## Useful scripts
 
 - `npm run dev` — dev server with hot reload
 - `npm run build` — production build
 - `npm run db:studio` — open Prisma Studio at http://localhost:5555 to inspect data
-- `npm run db:push` — re-sync the schema to the local DB (after edits to `prisma/schema.prisma`)
+- `npm run db:push` — re-sync the schema to the local DB
 
 ## Project layout
 
 ```
 prisma/
-  schema.prisma                    # User, Household, Equipment + NextAuth tables
+  schema.prisma                    # User, Household, Equipment, Program, ProgramDay, ProgramItem + NextAuth
 src/
   data/
     exercises.ts                   # 60+ curated exercises (source of truth)
+    templates.ts                   # Split templates (full body, upper/lower, PPL) with slots per day
   lib/
-    prisma.ts                      # Prisma client singleton
-    auth.ts                        # NextAuth config
+    prisma.ts
+    auth.ts
     equipment.ts                   # Inventory filter + load prescription
-  types/
-    next-auth.d.ts
-  components/
-    SessionProviderWrapper.tsx
+    program.ts                     # Program generator (pure function)
   app/
     layout.tsx
     page.tsx                       # Landing
     globals.css
-    (auth)/
-      signup/page.tsx
-      login/page.tsx
+    (auth)/login/page.tsx
+    (auth)/signup/page.tsx
     onboarding/page.tsx            # 6-step wizard
-    dashboard/
+    dashboard/                     # Profile + nav rows
       page.tsx
       DashboardClient.tsx
-    equipment/
-      page.tsx                     # Server: load inventory
-      EquipmentClient.tsx          # Client: add/remove items
-    exercises/
-      page.tsx                     # Filtered library, grouped by pattern
+    equipment/                     # Free-form inventory editor
+      page.tsx
+      EquipmentClient.tsx
+    exercises/                     # Filtered library, grouped by pattern
+      page.tsx
+    workout/                       # Today's workout + day tabs + regenerate
+      page.tsx
+      WorkoutClient.tsx
     api/
-      auth/
-        [...nextauth]/route.ts
-        signup/route.ts
+      auth/[...nextauth]/route.ts
+      auth/signup/route.ts
       profile/route.ts
       household/route.ts
-      equipment/
-        route.ts                   # GET/POST equipment
-        [id]/route.ts              # PUT/DELETE equipment
+      equipment/route.ts
+      equipment/[id]/route.ts
+      program/route.ts             # GET/POST active program
 ```
 
-## How the filter works
+## How the generator decides
 
-`src/lib/equipment.ts` exposes:
+`src/lib/program.ts` is a pure function: `generateProgram(profile, inventory) → program`.
 
-- `canPerform(exercise, inventory)` — true if all required equipment types are in the inventory
-- `availableExercises(inventory)` — full filtered list
-- `exercisesByPattern(inventory)` — grouped by movement pattern for UI
-- `prescribeLoad(exercise, inventory, targetKg)` — rounds a target to the nearest weight the user can actually load (used in Phase 3)
-
-Bodyweight exercises (`equipment: []`) are always available.
-
-## Adding more exercises
-
-Open `src/data/exercises.ts` and add another entry to the `EXERCISES` array. The fields are typed; new exercises automatically flow through the filter and into the browser UI.
-
-## Household sharing
-
-If a user is in a household, new equipment defaults to **household-shared** scope. Each user can also add **personal** items (their own DBs at the in-laws', a band they take traveling, etc.). Solo users get personal-only items by default.
+It chooses by:
+- **Split template** — based on `daysPerWeek` (2 → full body × 2, 3 → full body × 3, 4 → upper/lower × 2, 6 → PPL × 2, etc.)
+- **Slots per day** — each template day defines an ordered list of movement-pattern slots. The generator picks the best-fit exercise per slot from your filtered library.
+- **Exercise selection scoring** — prefers compounds for "main" slots, avoids repeats within a day, filters by difficulty matched to your experience, biases toward loaded exercises when you have weights.
+- **Sets / reps / rest** — read from a goal table (strength = 4×4-6 long rest; muscle_gain = 4×8-12 moderate rest; fat_loss = 3×10-12 short rest; etc.) and blended if you have multiple goals.
+- **Set count adjustment** — beginner gets fewer sets, advanced gets more.
+- **Session-length budget** — exercises per day capped to fit your declared session length (~7 min/exercise + 5 min warm-up).
+- **Load estimation** — a per-exercise fraction of your bodyweight, modified by experience, then rounded to the nearest weight you actually own via `prescribeLoad`.
 
 ## What was verified in the sandbox
 
 - `npx tsc --noEmit` — zero TypeScript errors
-- `next build` — compiles, lints, and type-checks all routes; stops only at Prisma client init (sandbox can't fetch Prisma's binary engines; works on your machine)
+- `next build` — compiles, lints, and type-checks all routes; stops only at Prisma client init (sandbox can't fetch Prisma's binary engines)
 
-## What you'll verify locally
+## Known limitations (deferred to later phases)
 
-- Sign up flow → onboarding → dashboard
-- Equipment editor: add dumbbell pair (2, 5, 10) → see it appear with weight chips
-- Exercises page: should show ~28 moves matching dumbbell + bodyweight (rises if you also add bench, kettlebell, etc.)
-- Delete an item from equipment → exercises list shrinks accordingly
-- (If you set up a household) Add a household-shared item from one account → it's visible from another account that joined via invite code
+- No logging or progression yet — Phase 3
+- AI coaching layer not yet wired — Phase 4
+- Injuries are captured but not yet used to filter exercises — Phase 4 will use Claude here
+- Bodyweight is captured but starting loads are conservative estimates; real numbers come from logging
+- The "today" computation maps days/week to weekdays evenly but doesn't track actual workout history yet (Phase 3 will)

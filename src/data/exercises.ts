@@ -47,6 +47,19 @@ export type Muscle =
 
 export type LoadType = "loaded" | "bodyweight" | "iso";
 
+export type ExerciseTag =
+  | "high_impact"        // burpees, jumping — avoid early postpartum
+  | "heavy_brace"        // KB swings, push press — heavy intra-abdominal pressure
+  | "deep_core_flexion"  // sit-ups, full crunches — avoid early postpartum / diastasis
+  | "overhead_load"      // overhead presses with heavy weight
+  | "wrist_loaded"       // push-ups, planks — wrist sensitive
+  | "stretch"            // static or dynamic stretch
+  | "glute_activation"   // hip thrusts, bird dog
+  | "back_focus"         // back-specific mobility
+  | "hip_focus"          // hip-specific mobility
+  | "postpartum_safe"    // pelvic-floor + diastasis friendly
+  | "pregnancy_safe";    // safe during pregnancy
+
 export interface Exercise {
   id: string;
   name: string;
@@ -57,6 +70,7 @@ export interface Exercise {
   unilateral: boolean;
   loadType: LoadType;
   cues: string[];
+  tags?: ExerciseTag[];
 }
 
 export const PATTERN_LABELS: Record<Pattern, string> = {
@@ -116,6 +130,7 @@ export const EXERCISES: Exercise[] = [
     difficulty: 1,
     unilateral: false,
     loadType: "bodyweight",
+    tags: ["wrist_loaded"],
     cues: [
       "Hands under shoulders, body in one straight line",
       "Brace abs and glutes, don't let hips sag",
@@ -131,6 +146,7 @@ export const EXERCISES: Exercise[] = [
     difficulty: 1,
     unilateral: false,
     loadType: "bodyweight",
+    tags: ["wrist_loaded", "postpartum_safe"],
     cues: [
       "Hands on the bench, body in a straight line",
       "Easier than floor push-ups — good regression",
@@ -145,6 +161,7 @@ export const EXERCISES: Exercise[] = [
     difficulty: 2,
     unilateral: false,
     loadType: "bodyweight",
+    tags: ["wrist_loaded"],
     cues: [
       "Feet elevated on bench, hands on floor",
       "Hits upper chest harder than flat push-ups",
@@ -220,6 +237,7 @@ export const EXERCISES: Exercise[] = [
     difficulty: 2,
     unilateral: false,
     loadType: "bodyweight",
+    tags: ["wrist_loaded", "overhead_load"],
     cues: [
       "Inverted-V position, hips high",
       "Lower the top of your head toward the floor",
@@ -235,6 +253,7 @@ export const EXERCISES: Exercise[] = [
     difficulty: 2,
     unilateral: false,
     loadType: "loaded",
+    tags: ["overhead_load"],
     cues: [
       "Standing or seated, dumbbells at shoulder height",
       "Brace core, press straight up",
@@ -250,6 +269,7 @@ export const EXERCISES: Exercise[] = [
     difficulty: 2,
     unilateral: false,
     loadType: "loaded",
+    tags: ["overhead_load"],
     cues: [
       "Bench upright, back supported",
       "Removes lower-body cheat — pure shoulder work",
@@ -264,6 +284,7 @@ export const EXERCISES: Exercise[] = [
     difficulty: 2,
     unilateral: true,
     loadType: "loaded",
+    tags: ["overhead_load"],
     cues: [
       "KB in front rack, elbow tucked",
       "Press while keeping torso vertical and glutes squeezed",
@@ -279,6 +300,7 @@ export const EXERCISES: Exercise[] = [
     difficulty: 2,
     unilateral: true,
     loadType: "loaded",
+    tags: ["heavy_brace", "overhead_load"],
     cues: [
       "Slight dip with the legs, then drive overhead",
       "Use this when strict press load is too heavy",
@@ -353,6 +375,7 @@ export const EXERCISES: Exercise[] = [
     difficulty: 3,
     unilateral: true,
     loadType: "loaded",
+    tags: ["wrist_loaded", "heavy_brace"],
     cues: [
       "Plank on the dumbbells, wide feet for stability",
       "Row one DB while not letting the hips rotate",
@@ -620,6 +643,7 @@ export const EXERCISES: Exercise[] = [
     difficulty: 2,
     unilateral: false,
     loadType: "loaded",
+    tags: ["heavy_brace"],
     cues: [
       "Hike the bell back, then snap hips forward",
       "Arms are ropes — the bell floats to chest height",
@@ -649,6 +673,7 @@ export const EXERCISES: Exercise[] = [
     difficulty: 1,
     unilateral: false,
     loadType: "loaded",
+    tags: ["glute_activation"],
     cues: [
       "Upper back on bench, DB over hips",
       "Drive hips up, squeeze glutes at top",
@@ -664,6 +689,7 @@ export const EXERCISES: Exercise[] = [
     difficulty: 1,
     unilateral: false,
     loadType: "bodyweight",
+    tags: ["glute_activation", "postpartum_safe"],
     cues: [
       "Feet flat, heels close to glutes",
       "Drive heels into floor, lift hips",
@@ -794,6 +820,7 @@ export const EXERCISES: Exercise[] = [
     difficulty: 2,
     unilateral: true,
     loadType: "loaded",
+    tags: ["overhead_load"],
     cues: [
       "Press the KB overhead, lock the arm",
       "Walk slowly — shoulder stability test",
@@ -810,6 +837,7 @@ export const EXERCISES: Exercise[] = [
     difficulty: 1,
     unilateral: false,
     loadType: "iso",
+    tags: ["wrist_loaded"],
     cues: [
       "Forearms on the floor, body in one line",
       "Squeeze glutes, tuck pelvis, brace abs",
@@ -825,6 +853,7 @@ export const EXERCISES: Exercise[] = [
     difficulty: 1,
     unilateral: true,
     loadType: "iso",
+    tags: ["wrist_loaded"],
     cues: [
       "Stack the feet, hips off the floor",
       "Body in a straight line from head to heel",
@@ -839,6 +868,7 @@ export const EXERCISES: Exercise[] = [
     difficulty: 1,
     unilateral: false,
     loadType: "bodyweight",
+    tags: ["postpartum_safe"],
     cues: [
       "Lower back glued to the floor",
       "Slow, controlled — opposite arm and leg",
@@ -940,6 +970,7 @@ export const EXERCISES: Exercise[] = [
     difficulty: 1,
     unilateral: false,
     loadType: "loaded",
+    tags: ["overhead_load"],
     cues: [
       "One DB held overhead with both hands",
       "Elbows in, lower behind the head with control",
@@ -956,6 +987,7 @@ export const EXERCISES: Exercise[] = [
     difficulty: 1,
     unilateral: true,
     loadType: "bodyweight",
+    tags: ["stretch", "hip_focus"],
     cues: [
       "Lunge, hand to floor, rotate and reach to ceiling",
       "Full-body warm-up movement",
@@ -970,6 +1002,7 @@ export const EXERCISES: Exercise[] = [
     difficulty: 1,
     unilateral: false,
     loadType: "bodyweight",
+    tags: ["stretch", "back_focus", "postpartum_safe"],
     cues: [
       "On all fours, alternate spinal flexion and extension",
       "Good warm-up for the spine",
@@ -984,6 +1017,7 @@ export const EXERCISES: Exercise[] = [
     difficulty: 3,
     unilateral: true,
     loadType: "loaded",
+    tags: ["heavy_brace", "overhead_load"],
     cues: [
       "Clean to rack, press to lockout, return",
       "Brutal full-body conditioning",
@@ -998,6 +1032,7 @@ export const EXERCISES: Exercise[] = [
     difficulty: 2,
     unilateral: false,
     loadType: "bodyweight",
+    tags: ["high_impact", "wrist_loaded"],
     cues: [
       "Squat, kick back to plank, push-up, jump up",
       "Universally hated, universally effective",
@@ -1012,6 +1047,7 @@ export const EXERCISES: Exercise[] = [
     difficulty: 1,
     unilateral: false,
     loadType: "bodyweight",
+    tags: ["high_impact", "wrist_loaded"],
     cues: [
       "Plank position, drive knees toward chest alternately",
       "Maintain a flat back — don't pop hips up",
@@ -1026,7 +1062,248 @@ export const EXERCISES: Exercise[] = [
     difficulty: 1,
     unilateral: false,
     loadType: "bodyweight",
+    tags: ["high_impact"],
     cues: ["Classic warm-up — keep the rhythm steady"],
+  },
+
+  // ---------- More stretches & postpartum-friendly mobility ----------
+  {
+    id: "childs_pose",
+    name: "Child's pose",
+    equipment: ["yoga_mat"],
+    pattern: "mobility",
+    primaryMuscles: ["back", "lats", "hip_flexors"],
+    difficulty: 1,
+    unilateral: false,
+    loadType: "iso",
+    tags: ["stretch", "back_focus", "postpartum_safe"],
+    cues: [
+      "Knees wide, big toes touching, sit hips back to heels",
+      "Reach arms forward, forehead toward mat",
+      "Breathe into the lower back for 5–10 slow breaths",
+    ],
+  },
+  {
+    id: "thread_the_needle",
+    name: "Thread the needle",
+    equipment: ["yoga_mat"],
+    pattern: "mobility",
+    primaryMuscles: ["back", "shoulders"],
+    difficulty: 1,
+    unilateral: true,
+    loadType: "iso",
+    tags: ["stretch", "back_focus", "postpartum_safe"],
+    cues: [
+      "From all fours, thread one arm under the other",
+      "Rest shoulder and ear on the mat; opposite arm reaches forward",
+      "Great for upper back and shoulder mobility",
+    ],
+  },
+  {
+    id: "seated_spinal_twist",
+    name: "Seated spinal twist",
+    equipment: ["yoga_mat"],
+    pattern: "mobility",
+    primaryMuscles: ["back", "obliques"],
+    difficulty: 1,
+    unilateral: true,
+    loadType: "iso",
+    tags: ["stretch", "back_focus", "postpartum_safe"],
+    cues: [
+      "Sit tall, cross one knee over the other",
+      "Twist toward the bent leg, lengthen the spine on the inhale",
+      "Don't force — twist comes from the mid-back",
+    ],
+  },
+  {
+    id: "supine_figure_four",
+    name: "Lying figure-4 stretch",
+    equipment: ["yoga_mat"],
+    pattern: "mobility",
+    primaryMuscles: ["glutes", "hip_flexors"],
+    difficulty: 1,
+    unilateral: true,
+    loadType: "iso",
+    tags: ["stretch", "hip_focus", "postpartum_safe"],
+    cues: [
+      "Lie on back, cross one ankle over the opposite knee",
+      "Pull the bottom thigh toward your chest",
+      "Hold 30–60s each side — releases deep glute tension",
+    ],
+  },
+  {
+    id: "pigeon_pose",
+    name: "Pigeon pose",
+    equipment: ["yoga_mat"],
+    pattern: "mobility",
+    primaryMuscles: ["glutes", "hip_flexors"],
+    difficulty: 2,
+    unilateral: true,
+    loadType: "iso",
+    tags: ["stretch", "hip_focus"],
+    cues: [
+      "Front shin angled across the mat, back leg straight behind",
+      "Stack hips, fold forward over the front shin",
+      "Skip if it pinches the front knee — sub the figure-4 stretch",
+    ],
+  },
+  {
+    id: "kneeling_hip_flexor_stretch",
+    name: "Kneeling hip flexor stretch",
+    equipment: ["yoga_mat"],
+    pattern: "mobility",
+    primaryMuscles: ["hip_flexors", "glutes"],
+    difficulty: 1,
+    unilateral: true,
+    loadType: "iso",
+    tags: ["stretch", "hip_focus", "postpartum_safe"],
+    cues: [
+      "Half-kneeling stance, back knee on the mat",
+      "Tuck pelvis, squeeze the rear glute",
+      "Don't arch the back — the stretch is in the front of the hip",
+    ],
+  },
+  {
+    id: "ninety_ninety_hip",
+    name: "90/90 hip switch",
+    equipment: ["yoga_mat"],
+    pattern: "mobility",
+    primaryMuscles: ["hip_flexors", "glutes"],
+    difficulty: 2,
+    unilateral: false,
+    loadType: "bodyweight",
+    tags: ["stretch", "hip_focus", "postpartum_safe"],
+    cues: [
+      "Sit with front leg at 90°, back leg at 90°",
+      "Lean over the front knee for an external rotation stretch",
+      "Sweep the legs to switch sides slowly",
+    ],
+  },
+  {
+    id: "standing_forward_fold",
+    name: "Standing forward fold",
+    equipment: [],
+    pattern: "mobility",
+    primaryMuscles: ["hamstrings", "back"],
+    difficulty: 1,
+    unilateral: false,
+    loadType: "iso",
+    tags: ["stretch", "back_focus", "postpartum_safe"],
+    cues: [
+      "Soft knees, hinge from the hips",
+      "Let the head and arms hang — release the spine",
+      "Don't bounce; breathe into the hamstrings",
+    ],
+  },
+  {
+    id: "knees_to_chest",
+    name: "Knees-to-chest",
+    equipment: ["yoga_mat"],
+    pattern: "mobility",
+    primaryMuscles: ["back", "glutes"],
+    difficulty: 1,
+    unilateral: false,
+    loadType: "iso",
+    tags: ["stretch", "back_focus", "postpartum_safe"],
+    cues: [
+      "Lie on back, hug both knees to chest",
+      "Rock gently side-to-side to massage the lower back",
+    ],
+  },
+  {
+    id: "bird_dog",
+    name: "Bird dog",
+    equipment: ["yoga_mat"],
+    pattern: "core",
+    primaryMuscles: ["abs", "back", "glutes"],
+    difficulty: 1,
+    unilateral: true,
+    loadType: "bodyweight",
+    tags: ["postpartum_safe", "glute_activation", "back_focus"],
+    cues: [
+      "All fours, neutral spine — don't sag or hike the hips",
+      "Extend opposite arm + leg, pause, return with control",
+      "Pelvic-floor-friendly core work",
+    ],
+  },
+  {
+    id: "pelvic_tilt",
+    name: "Pelvic tilt",
+    equipment: ["yoga_mat"],
+    pattern: "core",
+    primaryMuscles: ["abs", "glutes"],
+    difficulty: 1,
+    unilateral: false,
+    loadType: "bodyweight",
+    tags: ["postpartum_safe"],
+    cues: [
+      "Lie on back, knees bent, feet flat",
+      "Exhale and gently flatten lower back into the mat",
+      "Subtle movement — connect breath with pelvic floor",
+    ],
+  },
+  {
+    id: "diaphragmatic_breathing",
+    name: "Diaphragmatic breathing",
+    equipment: ["yoga_mat"],
+    pattern: "core",
+    primaryMuscles: ["abs"],
+    difficulty: 1,
+    unilateral: false,
+    loadType: "iso",
+    tags: ["postpartum_safe"],
+    cues: [
+      "Lie on back, one hand on chest, one on belly",
+      "Inhale into the belly, exhale fully",
+      "Foundational for rebuilding deep core after pregnancy",
+    ],
+  },
+  {
+    id: "glute_bridge_march",
+    name: "Glute bridge march",
+    equipment: ["yoga_mat"],
+    pattern: "hinge",
+    primaryMuscles: ["glutes", "abs"],
+    difficulty: 2,
+    unilateral: true,
+    loadType: "bodyweight",
+    tags: ["glute_activation", "postpartum_safe"],
+    cues: [
+      "From a glute bridge, lift one knee toward chest without dropping the hips",
+      "Alternate slowly — challenges single-leg stability",
+    ],
+  },
+  {
+    id: "clamshell",
+    name: "Clamshell",
+    equipment: ["yoga_mat"],
+    pattern: "hinge",
+    primaryMuscles: ["glutes"],
+    difficulty: 1,
+    unilateral: true,
+    loadType: "bodyweight",
+    tags: ["glute_activation", "postpartum_safe", "hip_focus"],
+    cues: [
+      "Side-lying, knees bent and stacked",
+      "Lift top knee while keeping feet together — don't roll the hip back",
+      "Targets the lateral glutes",
+    ],
+  },
+  {
+    id: "couch_stretch",
+    name: "Couch stretch",
+    equipment: ["yoga_mat"],
+    pattern: "mobility",
+    primaryMuscles: ["hip_flexors", "quads"],
+    difficulty: 2,
+    unilateral: true,
+    loadType: "iso",
+    tags: ["stretch", "hip_focus"],
+    cues: [
+      "Back foot up on a couch or bench, front foot flat",
+      "Tuck the pelvis and squeeze the rear glute",
+      "Hits the hip flexors and quads aggressively",
+    ],
   },
 ];
 

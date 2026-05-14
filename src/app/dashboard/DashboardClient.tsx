@@ -23,6 +23,9 @@ export default function DashboardClient({
   householdInviteCode,
   equipmentCount,
   exerciseCount,
+  hasProgram,
+  programSplit,
+  programDayCount,
 }: {
   name: string;
   email: string;
@@ -31,6 +34,9 @@ export default function DashboardClient({
   householdInviteCode: string | null;
   equipmentCount: number;
   exerciseCount: number;
+  hasProgram: boolean;
+  programSplit: string | null;
+  programDayCount: number;
 }) {
   return (
     <main className="mx-auto max-w-md min-h-[100dvh] flex flex-col p-6 gap-5">
@@ -50,6 +56,25 @@ export default function DashboardClient({
 
       <nav className="flex flex-col gap-3">
         <Link
+          href="/workout"
+          className="card flex items-center justify-between gap-3 cursor-pointer hover:border-[var(--accent)] active:opacity-80 transition-colors"
+        >
+          <div>
+            <p className="text-xs uppercase tracking-wide text-[var(--fg-muted)]">
+              Workout
+            </p>
+            <p className="mt-1 font-semibold">
+              {hasProgram
+                ? `${programSplit} · ${programDayCount} days`
+                : "Generate your program"}
+            </p>
+          </div>
+          <span aria-hidden className="text-[var(--accent)] text-xl leading-none">
+            →
+          </span>
+        </Link>
+
+        <Link
           href="/equipment"
           className="card flex items-center justify-between gap-3 cursor-pointer hover:border-[var(--accent)] active:opacity-80 transition-colors"
         >
@@ -63,10 +88,7 @@ export default function DashboardClient({
                 : `${equipmentCount} ${equipmentCount === 1 ? "item" : "items"}`}
             </p>
           </div>
-          <span
-            aria-hidden
-            className="text-[var(--accent)] text-xl leading-none"
-          >
+          <span aria-hidden className="text-[var(--accent)] text-xl leading-none">
             →
           </span>
         </Link>
@@ -83,10 +105,7 @@ export default function DashboardClient({
               {exerciseCount} available to you
             </p>
           </div>
-          <span
-            aria-hidden
-            className="text-[var(--accent)] text-xl leading-none"
-          >
+          <span aria-hidden className="text-[var(--accent)] text-xl leading-none">
             →
           </span>
         </Link>

@@ -1,6 +1,5 @@
-// Gym Planner — Phase 0 schema
-// SQLite for local dev. JSON-string fields used where arrays would be needed
-// (SQLite doesn't support native arrays). Swap to Postgres later.
+// Gym Planner — Phase 2 schema
+// SQLite for local dev. JSON-string fields used where arrays would be needed.
 
 generator client {
   provider = "prisma-client-js"
@@ -72,38 +71,86 @@ model User {
 
   // Profile (filled during onboarding)
   age            Int?
-  gender         String? // "male" | "female" | "other" | "prefer_not_to_say"
+  gender         String?
   heightCm       Float?
   bodyweightKg   Float?
-  experience     String? // "beginner" | "intermediate" | "advanced"
-  goals          String? // JSON array: ["general_fitness", "strength", ...]
+  experience     String?
+  goals          String?
   daysPerWeek    Int?
   sessionMinutes Int?
-  injuries       String? // JSON array of free-text tags
+  injuries        String?
+  postpartumWeeks Int? // weeks since giving birth, null = N/A
   onboarded      Boolean @default(false)
 
   householdId String?
   household   Household? @relation(fields: [householdId], references: [id], onDelete: SetNull)
 
-  accounts        Account[]
-  sessions        Session[]
+  accounts         Account[]
+  sessions         Session[]
   privateEquipment Equipment[] @relation("UserEquipment")
+  programs         Program[]
 }
 
 model Equipment {
   id        String   @id @default(cuid())
-  type      String // "dumbbell" | "kettlebell" | "barbell" | "plate" | "bench" | "pullup_bar" | "band" | "machine" | "bodyweight" | "other"
-  label     String? // user-supplied label, e.g. "Powerblock 50s"
-  // For weighted items: JSON array of weights in kg. e.g. "[2, 5, 10]"
-  // For non-weighted: null or "[]"
+  type      String
+  label     String?
   weightsKg String?
   notes     String?
   createdAt DateTime @default(now())
 
-  // Either household-shared OR private to a user
   householdId String?
   household   Household? @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
   userId String?
   user   User?   @relation("UserEquipment", fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// --- Program models (Phase 2) ---
+
+model Program {
+  id           String       @id @default(cuid())
+  userId       String
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  split        String // e.g. "full_body_3x", "upper_lower_4x", "ppl_6x"
+  daysPerWeek  Int
+  goalsSnapshot String // JSON array of goals at generation time
+  experience   String
+  generatedAt  DateTime     @default(now())
+  isActive     Boolean      @default(true)
+  notes        String?
+
+  days ProgramDay[]
+
+  @@index([userId, isActive])
+}
+
+model ProgramDay {
+  id        String        @id @default(cuid())
+  programId String
+  program   Program       @relation(fields: [programId], references: [id], onDelete: Cascade)
+  order     Int           // 1-based day index within the week
+  label     String        // e.g. "Full body A", "Upper", "Push"
+  isRestDay Boolean       @default(false)
+
+  items ProgramItem[]
+
+  @@index([programId, order])
+}
+
+model ProgramItem {
+  id           String     @id @default(cuid())
+  dayId        String
+  day          ProgramDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  order        Int
+  exerciseId   String     // Matches Exercise.id in src/data/exercises.ts
+  sets         Int
+  repsMin      Int
+  repsMax      Int
+  targetLoadKg Float?     // null for bodyweight or iso holds
+  holdSeconds  Int?       // for iso holds (planks etc.) instead of reps
+  restSeconds  Int
+  notes        String?
+
+  @@index([dayId, order])
 }
