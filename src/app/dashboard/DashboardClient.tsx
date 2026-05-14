@@ -1,7 +1,10 @@
 "use client";
 
+import { useState } from "react";
+
 import Link from "next/link";
 import { signOut } from "next-auth/react";
+import CoachSheet from "@/components/CoachSheet";
 
 type Profile = {
   age: number | null;
@@ -26,6 +29,7 @@ export default function DashboardClient({
   hasProgram,
   programSplit,
   programDayCount,
+  claudeEnabled,
 }: {
   name: string;
   email: string;
@@ -37,7 +41,18 @@ export default function DashboardClient({
   hasProgram: boolean;
   programSplit: string | null;
   programDayCount: number;
+  claudeEnabled: boolean;
 }) {
+
+  const [checkinOpen, setCheckinOpen] = useState(false);
+
+  async function fetchCheckin() {
+    const res = await fetch("/api/coach/weekly-checkin", { method: "POST" });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error ?? "Could not load check-in" };
+    return { text: data.text };
+  }
+
   return (
     <main className="mx-auto max-w-md min-h-[100dvh] flex flex-col p-6 gap-5">
       <header className="pt-4 flex items-start justify-between">
@@ -73,6 +88,25 @@ export default function DashboardClient({
             →
           </span>
         </Link>
+
+
+        {claudeEnabled && (
+          <button
+            type="button"
+            onClick={() => setCheckinOpen(true)}
+            className="card flex items-center justify-between gap-3 cursor-pointer hover:border-[var(--accent)] active:opacity-80 transition-colors w-full text-left"
+          >
+            <div>
+              <p className="text-xs uppercase tracking-wide text-[var(--fg-muted)]">
+                Weekly check-in
+              </p>
+              <p className="mt-1 font-semibold">How am I doing?</p>
+            </div>
+            <span aria-hidden className="text-[var(--accent)] text-xl leading-none">
+              →
+            </span>
+          </button>
+        )}
 
         <Link
           href="/equipment"
@@ -200,6 +234,13 @@ export default function DashboardClient({
           )}
         </div>
       )}
+
+      <CoachSheet
+        open={checkinOpen}
+        title="Weekly check-in"
+        onClose={() => setCheckinOpen(false)}
+        fetcher={fetchCheckin}
+      />
     </main>
   );
 }

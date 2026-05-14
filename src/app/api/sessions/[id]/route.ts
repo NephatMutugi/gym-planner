@@ -43,14 +43,15 @@ type EquipmentRow = {
 };
 
 // GET /api/sessions/:id — full session detail with prescriptions + already-logged sets
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { id } = await params;
   const ws = await prisma.workoutSession.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       sets: { orderBy: [{ exerciseId: "asc" }, { setNumber: "asc" }] },
       programDay: {
@@ -163,13 +164,14 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 }
 
 // PATCH /api/sessions/:id — complete the session, add notes
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const ws = await prisma.workoutSession.findUnique({ where: { id: params.id } });
+  const { id } = await params;
+  const ws = await prisma.workoutSession.findUnique({ where: { id } });
   if (!ws || ws.userId !== session.user.id) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -181,7 +183,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 
   const updated = await prisma.workoutSession.update({
-    where: { id: params.id },
+    where: { id },
     data: {
       completedAt:
         parsed.data.completed === true
@@ -205,15 +207,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 }
 
 // DELETE /api/sessions/:id — discard a session
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const ws = await prisma.workoutSession.findUnique({ where: { id: params.id } });
+  const { id } = await params;
+  const ws = await prisma.workoutSession.findUnique({ where: { id } });
   if (!ws || ws.userId !== session.user.id) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-  await prisma.workoutSession.delete({ where: { id: params.id } });
+  await prisma.workoutSession.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }

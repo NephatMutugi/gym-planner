@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { availableExercises, inventoryFromDb } from "@/lib/equipment";
+import { isClaudeConfigured } from "@/lib/claude";
 import DashboardClient from "./DashboardClient";
 
 type EquipmentRow = {
@@ -70,6 +71,7 @@ export default async function DashboardPage() {
       hasProgram={!!program}
       programSplit={program ? program.split.replace(/_/g, " ") : null}
       programDayCount={program?.days.length ?? 0}
+      claudeEnabled={isClaudeConfigured()}
     />
   );
 }

@@ -19,13 +19,14 @@ type SetRow = {
 export default async function HistoryDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) redirect("/login");
 
   const ws = await prisma.workoutSession.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       programDay: { select: { label: true } },
       sets: { orderBy: [{ exerciseId: "asc" }, { setNumber: "asc" }] },

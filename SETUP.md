@@ -1,16 +1,21 @@
 # Gym Planner — Local Setup
 
-## What's in the app (Phase 0 + 1 + 2)
+## What's in the app (Phase 0–4)
 
 **Phase 0:** Auth, profile, optional households.
 
-**Phase 1:** Free-form equipment editor, curated exercise library (60+ moves), filter logic that shows only the exercises you can do with what you own.
+**Phase 1:** Free-form equipment editor, curated exercise library (75+ moves), filter logic that shows only the exercises you can do with what you own.
 
-**Phase 2:** Rules-based program generator. From your profile + equipment, the system picks a weekly split (full body × 2/3, upper/lower × 4, PPL × 6, etc.), assigns exercises to each day from your filtered library, and computes sets, reps, target load (rounded to weights you actually own), and rest periods based on your goal mix and experience level. Two users with different goals in the same household get genuinely different programs.
+**Phase 2:** Rules-based program generator with split templates (full body, upper/lower, PPL), goal-aware reps/sets/rest, postpartum-aware filtering, mobility/stretch emphasis.
+
+**Phase 3:** Interactive workout logging — start a session, log sets one at a time, complete, view history. Automatic progression (double progression for loaded, rep progression for bodyweight, time progression for iso holds).
+
+**Phase 4:** Claude coaching layer. "Ask" any exercise during a session for a tailored explanation. "Swap" any exercise mid-workout — Claude picks an alternative from your available pool with reasoning. "Weekly check-in" on the dashboard summarizes your last 14 days and suggests next steps.
 
 ## Prerequisites
 
 - Node.js 18.18 or newer (Node 20 LTS recommended)
+- An Anthropic API key for Phase 4 features (optional — the buttons hide if not configured). Get one at https://console.anthropic.com
 
 ## First-time setup
 
@@ -23,92 +28,92 @@ npm run dev
 
 Open http://localhost:3000
 
-## Schema changes from Phase 2
+## Environment
 
-The Phase 2 schema added three new tables: `Program`, `ProgramDay`, `ProgramItem`, plus a relation on `User`. You must re-run `npx prisma db push` to apply them locally (no data loss).
+`.env` is checked in with dev defaults. Set:
+
+- `NEXTAUTH_SECRET` — replace before deploying. Generate with `openssl rand -base64 32`
+- `ANTHROPIC_API_KEY` — required for Phase 4 (Ask / Swap / Weekly check-in). Leave empty to use the app without Claude.
+
+After editing `.env`, restart the dev server.
 
 ## What to try
 
 1. Sign up → onboarding → dashboard
-2. Add some equipment (e.g. dumbbells 2/5/10kg, a bench, a yoga mat)
-3. Tap **Workout** on the dashboard → "Generate my program"
-4. You'll land on Day 1 of your generated program. Use the day pills at the top to flip between training days.
-5. Each exercise shows sets × reps, load (rounded to your dumbbells), rest, and an expandable form-cues section.
-6. Tap **Regenerate program** at the bottom to refresh after changing equipment or profile.
-
-For testing the goal differentiation: create a second account, choose different goals (e.g. fat_loss + endurance vs strength + muscle_gain), and compare the generated programs.
+2. Add equipment (e.g. dumbbells 2/5/10kg, bench, yoga mat)
+3. Tap **Workout** → **Generate my program** → see your weekly split
+4. Tap **Start workout** on a day → log sets as you go → **Complete workout**
+5. Repeat a few sessions and watch the prescriptions adjust (load goes up if you hit the top of the rep range)
+6. Visit **History** to see past sessions
+7. With `ANTHROPIC_API_KEY` set:
+   - During an active session, tap **ask** next to any exercise for a tailored explanation
+   - Tap **swap** to get a Claude-suggested alternative with reasoning
+   - On the dashboard, tap **Weekly check-in** for a summary of the last 14 days
 
 ## Useful scripts
 
-- `npm run dev` — dev server with hot reload
+- `npm run dev` — dev server
 - `npm run build` — production build
-- `npm run db:studio` — open Prisma Studio at http://localhost:5555 to inspect data
+- `npm run db:studio` — open Prisma Studio at http://localhost:5555
 - `npm run db:push` — re-sync the schema to the local DB
 
 ## Project layout
 
 ```
 prisma/
-  schema.prisma                    # User, Household, Equipment, Program, ProgramDay, ProgramItem + NextAuth
+  schema.prisma           # User, Household, Equipment, Program, ProgramDay,
+                          # ProgramItem, WorkoutSession, SetLog + NextAuth
 src/
   data/
-    exercises.ts                   # 60+ curated exercises (source of truth)
-    templates.ts                   # Split templates (full body, upper/lower, PPL) with slots per day
+    exercises.ts          # 75+ exercises with tags (high_impact, postpartum_safe, etc.)
+    templates.ts          # Split templates with movement-pattern slots per day
   lib/
     prisma.ts
     auth.ts
-    equipment.ts                   # Inventory filter + load prescription
-    program.ts                     # Program generator (pure function)
+    claude.ts             # Anthropic SDK wrapper, graceful no-key fallback
+    equipment.ts          # Inventory filter + load prescription
+    program.ts            # Program generator (pure function)
+    progression.ts        # Per-session progression rules
+  components/
+    SessionProviderWrapper.tsx
+    CoachSheet.tsx        # Reusable modal for Claude responses
   app/
-    layout.tsx
-    page.tsx                       # Landing
-    globals.css
-    (auth)/login/page.tsx
-    (auth)/signup/page.tsx
-    onboarding/page.tsx            # 6-step wizard
-    dashboard/                     # Profile + nav rows
-      page.tsx
-      DashboardClient.tsx
-    equipment/                     # Free-form inventory editor
-      page.tsx
-      EquipmentClient.tsx
-    exercises/                     # Filtered library, grouped by pattern
-      page.tsx
-    workout/                       # Today's workout + day tabs + regenerate
-      page.tsx
-      WorkoutClient.tsx
+    (auth)/login, (auth)/signup
+    onboarding/page.tsx
+    dashboard/                          # nav + weekly check-in
+    equipment/                          # editor
+    exercises/                          # filtered library
+    workout/                            # program viewer + day tabs
+      session/[id]/                     # interactive logging
+    history/                            # session list + detail
     api/
-      auth/[...nextauth]/route.ts
-      auth/signup/route.ts
-      profile/route.ts
-      household/route.ts
-      equipment/route.ts
-      equipment/[id]/route.ts
-      program/route.ts             # GET/POST active program
+      auth/[...nextauth]
+      auth/signup
+      profile
+      household
+      equipment, equipment/[id]
+      program
+      sessions, sessions/[id], sessions/[id]/sets, sessions/[id]/sets/[setId]
+      coach/explain
+      coach/swap
+      coach/weekly-checkin
 ```
 
-## How the generator decides
+## Claude usage notes
 
-`src/lib/program.ts` is a pure function: `generateProgram(profile, inventory) → program`.
+- **Explain (ask)** uses Haiku — cheap, fast, ~500 token responses
+- **Swap** uses Sonnet — better at constrained JSON output and reasoning
+- **Weekly check-in** uses Sonnet — produces the most thoughtful summaries
 
-It chooses by:
-- **Split template** — based on `daysPerWeek` (2 → full body × 2, 3 → full body × 3, 4 → upper/lower × 2, 6 → PPL × 2, etc.)
-- **Slots per day** — each template day defines an ordered list of movement-pattern slots. The generator picks the best-fit exercise per slot from your filtered library.
-- **Exercise selection scoring** — prefers compounds for "main" slots, avoids repeats within a day, filters by difficulty matched to your experience, biases toward loaded exercises when you have weights.
-- **Sets / reps / rest** — read from a goal table (strength = 4×4-6 long rest; muscle_gain = 4×8-12 moderate rest; fat_loss = 3×10-12 short rest; etc.) and blended if you have multiple goals.
-- **Set count adjustment** — beginner gets fewer sets, advanced gets more.
-- **Session-length budget** — exercises per day capped to fit your declared session length (~7 min/exercise + 5 min warm-up).
-- **Load estimation** — a per-exercise fraction of your bodyweight, modified by experience, then rounded to the nearest weight you actually own via `prescribeLoad`.
+If you don't want to pay for Sonnet, both swap and weekly-checkin can be switched to Haiku by editing `src/lib/claude.ts` calls.
 
 ## What was verified in the sandbox
 
 - `npx tsc --noEmit` — zero TypeScript errors
-- `next build` — compiles, lints, and type-checks all routes; stops only at Prisma client init (sandbox can't fetch Prisma's binary engines)
+- `next build` — compiles + lints + type-checks all routes; stops only at Prisma client init (sandbox limitation)
 
-## Known limitations (deferred to later phases)
+## Limitations / things to know
 
-- No logging or progression yet — Phase 3
-- AI coaching layer not yet wired — Phase 4
-- Injuries are captured but not yet used to filter exercises — Phase 4 will use Claude here
-- Bodyweight is captured but starting loads are conservative estimates; real numbers come from logging
-- The "today" computation maps days/week to weekdays evenly but doesn't track actual workout history yet (Phase 3 will)
+- Swap is session-scoped only. The accepted swap replaces the exercise visually in the current session; logged sets are saved under the new exerciseId. Next time you start the same program day, the original prescribed exercise is back. Phase 5 may add a permanent swap.
+- Progression is deterministic; it doesn't account for sleep, soreness, or how the previous session "felt" beyond what you logged.
+- "Today" on the workout page is a simple weekday rotation. It does not track whether you actually worked out yesterday.

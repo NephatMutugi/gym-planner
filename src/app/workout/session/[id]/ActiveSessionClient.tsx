@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { EXERCISE_BY_ID } from "@/data/exercises";
+import CoachSheet from "@/components/CoachSheet";
 
 type Prescription = {
   targetLoadKg: number | null;
@@ -54,17 +55,103 @@ export default function ActiveSessionClient({
   initialNotes,
   items,
   loggedSets,
+  claudeEnabled,
 }: {
   sessionId: string;
   completed: boolean;
   initialNotes: string;
   items: Item[];
   loggedSets: LoggedSet[];
+  claudeEnabled: boolean;
 }) {
   const router = useRouter();
   const [notes, setNotes] = useState(initialNotes);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [coachOpen, setCoachOpen] = useState(false);
+  const [coachTitle, setCoachTitle] = useState("");
+  const [coachFetcher, setCoachFetcher] = useState<(() => Promise<{ text?: string; error?: string }>) | null>(null);
+
+
+
+  // --- Swap state ---
+  const [swapOpen, setSwapOpen] = useState(false);
+  const [swapItemId, setSwapItemId] = useState<string | null>(null);
+  const [swapReason, setSwapReason] = useState("");
+  const [swapBusy, setSwapBusy] = useState(false);
+  const [swapError, setSwapError] = useState<string | null>(null);
+  const [swapSuggestion, setSwapSuggestion] = useState<{
+    exerciseId: string;
+    name: string;
+    reasoning: string;
+  } | null>(null);
+  // Map of programItemId -> new exerciseId (locally swapped, this session only)
+  const [swappedExerciseIds, setSwappedExerciseIds] = useState<Record<string, string>>({});
+
+  function openSwap(programItemId: string) {
+    setSwapItemId(programItemId);
+    setSwapReason("");
+    setSwapSuggestion(null);
+    setSwapError(null);
+    setSwapOpen(true);
+  }
+
+  function closeSwap() {
+    setSwapOpen(false);
+    setSwapItemId(null);
+    setSwapSuggestion(null);
+    setSwapError(null);
+  }
+
+  async function requestSwap() {
+    if (!swapItemId) return;
+    const item = items.find((i) => i.programItemId === swapItemId);
+    if (!item) return;
+    const exerciseIdToSwap =
+      swappedExerciseIds[item.programItemId] ?? item.exerciseId;
+    setSwapBusy(true);
+    setSwapError(null);
+    const res = await fetch("/api/coach/swap", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        exerciseId: exerciseIdToSwap,
+        reason: swapReason || "Looking for an alternative.",
+      }),
+    });
+    setSwapBusy(false);
+    const data = await res.json();
+    if (!res.ok) {
+      setSwapError(data.error ?? "Could not get a suggestion");
+      return;
+    }
+    setSwapSuggestion(data.suggestion);
+  }
+
+  function acceptSwap() {
+    if (!swapItemId || !swapSuggestion) return;
+    setSwappedExerciseIds((prev) => ({
+      ...prev,
+      [swapItemId]: swapSuggestion.exerciseId,
+    }));
+    closeSwap();
+  }
+
+  function explainExercise(exerciseId: string, exerciseName: string) {
+    setCoachTitle(`About: ${exerciseName}`);
+    setCoachFetcher(() => async () => {
+      const res = await fetch("/api/coach/explain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ exerciseId }),
+      });
+      const data = await res.json();
+      if (!res.ok) return { error: data.error ?? "Could not load explanation" };
+      return { text: data.text };
+    });
+    setCoachOpen(true);
+  }
+
 
   // Seed state from logged sets
   const seed: Record<string, Local> = {};
@@ -105,17 +192,18 @@ export default function ActiveSessionClient({
   async function logSet(
     item: Item,
     setNumber: number,
-    options: { skipped?: boolean } = {}
+    options: { skipped?: boolean; exerciseIdOverride?: string } = {}
   ) {
     setError(null);
-    const cur = getLocal(item.exerciseId, setNumber);
+    const effectiveExerciseId = options.exerciseIdOverride ?? item.exerciseId;
+    const cur = getLocal(effectiveExerciseId, setNumber);
     const isIso = item.prescription.holdSeconds != null;
     const weight = cur.weight === "" ? null : Number(cur.weight);
     const reps = cur.reps === "" ? null : Number(cur.reps);
     const hold = cur.hold === "" ? null : Number(cur.hold);
 
     const payload = {
-      exerciseId: item.exerciseId,
+      exerciseId: effectiveExerciseId,
       setNumber,
       weightKg: options.skipped ? null : weight,
       reps: options.skipped ? null : isIso ? null : reps,
@@ -124,7 +212,7 @@ export default function ActiveSessionClient({
       programItemId: item.programItemId,
     };
 
-    setLocalField(item.exerciseId, setNumber, "status", "saving");
+    setLocalField(effectiveExerciseId, setNumber, "status", "saving");
     const res = await fetch(`/api/sessions/${sessionId}/sets`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -133,11 +221,11 @@ export default function ActiveSessionClient({
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "Could not save set");
-      setLocalField(item.exerciseId, setNumber, "status", "pending");
+      setLocalField(effectiveExerciseId, setNumber, "status", "pending");
       return;
     }
     setLocalField(
-      item.exerciseId,
+      effectiveExerciseId,
       setNumber,
       "status",
       options.skipped ? "skipped" : "logged"
@@ -176,7 +264,8 @@ export default function ActiveSessionClient({
   return (
     <div className="flex flex-col gap-4">
       {items.map((it) => {
-        const ex = EXERCISE_BY_ID[it.exerciseId];
+        const effectiveExerciseId = swappedExerciseIds[it.programItemId] ?? it.exerciseId;
+        const ex = EXERCISE_BY_ID[effectiveExerciseId];
         if (!ex) return null;
         const isIso = it.prescription.holdSeconds != null;
         const repsLabel =
@@ -188,7 +277,34 @@ export default function ActiveSessionClient({
           <div key={it.programItemId} className="card">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="font-semibold">{ex.name}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-semibold">{ex.name}</p>
+                  {swappedExerciseIds[it.programItemId] && (
+                    <span className="text-[10px] uppercase tracking-wide text-[var(--accent)] border border-[var(--accent)] rounded-full px-1.5 py-0.5">
+                      swapped
+                    </span>
+                  )}
+                  {claudeEnabled && !completed && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => explainExercise(effectiveExerciseId, ex.name)}
+                        className="text-xs text-[var(--accent)] underline"
+                        aria-label={`Explain ${ex.name}`}
+                      >
+                        ask
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openSwap(it.programItemId)}
+                        className="text-xs text-[var(--accent)] underline"
+                        aria-label={`Swap ${ex.name}`}
+                      >
+                        swap
+                      </button>
+                    </>
+                  )}
+                </div>
                 {it.previous && (
                   <p className="text-xs text-[var(--fg-muted)] mt-1">
                     Last:{" "}
@@ -217,7 +333,7 @@ export default function ActiveSessionClient({
             <div className="mt-3 flex flex-col gap-2">
               {Array.from({ length: it.sets }).map((_, i) => {
                 const setNumber = i + 1;
-                const cur = getLocal(it.exerciseId, setNumber);
+                const cur = getLocal(effectiveExerciseId, setNumber);
                 const isLogged = cur.status === "logged";
                 const isSkipped = cur.status === "skipped";
                 return (
@@ -242,7 +358,7 @@ export default function ActiveSessionClient({
                         step="0.5"
                         value={cur.weight}
                         onChange={(e) =>
-                          setLocalField(it.exerciseId, setNumber, "weight", e.target.value)
+                          setLocalField(effectiveExerciseId, setNumber, "weight", e.target.value)
                         }
                         placeholder={String(it.prescription.targetLoadKg)}
                         className="text-center"
@@ -256,7 +372,7 @@ export default function ActiveSessionClient({
                         inputMode="numeric"
                         value={cur.hold}
                         onChange={(e) =>
-                          setLocalField(it.exerciseId, setNumber, "hold", e.target.value)
+                          setLocalField(effectiveExerciseId, setNumber, "hold", e.target.value)
                         }
                         placeholder={String(it.prescription.holdSeconds ?? "")}
                         className="text-center flex-1"
@@ -269,7 +385,7 @@ export default function ActiveSessionClient({
                         inputMode="numeric"
                         value={cur.reps}
                         onChange={(e) =>
-                          setLocalField(it.exerciseId, setNumber, "reps", e.target.value)
+                          setLocalField(effectiveExerciseId, setNumber, "reps", e.target.value)
                         }
                         placeholder={repsLabel}
                         className="text-center flex-1"
@@ -284,7 +400,7 @@ export default function ActiveSessionClient({
                       <>
                         <button
                           type="button"
-                          onClick={() => logSet(it, setNumber)}
+                          onClick={() => logSet(it, setNumber, { exerciseIdOverride: effectiveExerciseId })}
                           className={
                             "px-3 py-1.5 rounded-lg text-sm font-semibold " +
                             (isLogged
@@ -297,7 +413,7 @@ export default function ActiveSessionClient({
                         </button>
                         <button
                           type="button"
-                          onClick={() => logSet(it, setNumber, { skipped: true })}
+                          onClick={() => logSet(it, setNumber, { skipped: true, exerciseIdOverride: effectiveExerciseId })}
                           className="px-3 py-1.5 rounded-lg text-sm text-[var(--fg-muted)] border border-[var(--border)]"
                           disabled={cur.status === "saving"}
                           aria-label="Skip set"
@@ -339,6 +455,100 @@ export default function ActiveSessionClient({
           {error}
         </p>
       )}
+
+
+      {/* Swap modal */}
+      {swapOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+          role="dialog"
+          aria-modal="true"
+          onClick={closeSwap}
+        >
+          <div className="absolute inset-0 bg-black/60" />
+          <div
+            className="relative w-full sm:max-w-md max-h-[85dvh] overflow-y-auto rounded-t-3xl sm:rounded-3xl border border-[var(--border)] bg-[var(--bg-elev)] p-5 m-0 sm:m-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <h2 className="text-lg font-bold">Swap exercise</h2>
+              <button
+                type="button"
+                onClick={closeSwap}
+                className="text-[var(--fg-muted)] text-xl leading-none px-2"
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            {!swapSuggestion && (
+              <>
+                <label className="block">
+                  <span className="block text-sm mb-1.5 text-[var(--fg-muted)]">
+                    Why? <span className="opacity-60">(optional)</span>
+                  </span>
+                  <textarea
+                    rows={3}
+                    value={swapReason}
+                    onChange={(e) => setSwapReason(e.target.value)}
+                    placeholder="e.g. lower back is sore, no time for setup, want something easier"
+                    maxLength={300}
+                  />
+                </label>
+                {swapError && (
+                  <p className="text-sm mt-2" style={{ color: "var(--danger)" }}>
+                    {swapError}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={requestSwap}
+                  className="btn btn-primary mt-4"
+                  disabled={swapBusy}
+                >
+                  {swapBusy ? "Asking Claude…" : "Suggest an alternative"}
+                </button>
+              </>
+            )}
+            {swapSuggestion && (
+              <>
+                <p className="text-xs uppercase tracking-wide text-[var(--fg-muted)]">
+                  Suggestion
+                </p>
+                <p className="mt-1 text-lg font-bold">{swapSuggestion.name}</p>
+                <p className="mt-2 text-sm leading-relaxed">
+                  {swapSuggestion.reasoning}
+                </p>
+                <div className="flex gap-3 mt-5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSwapSuggestion(null);
+                    }}
+                    className="btn btn-ghost"
+                  >
+                    Try another
+                  </button>
+                  <button
+                    type="button"
+                    onClick={acceptSwap}
+                    className="btn btn-primary"
+                  >
+                    Use this
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      <CoachSheet
+        open={coachOpen}
+        title={coachTitle}
+        onClose={() => setCoachOpen(false)}
+        fetcher={coachFetcher ?? undefined}
+      />
 
       {!completed && (
         <div className="flex flex-col gap-3 pb-4">

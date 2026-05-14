@@ -7,6 +7,7 @@ import ActiveSessionClient from "./ActiveSessionClient";
 import { inventoryFromDb } from "@/lib/equipment";
 import { nextPrescription, type SetLogInput, type Prescription } from "@/lib/progression";
 import { EXERCISE_BY_ID } from "@/data/exercises";
+import { isClaudeConfigured } from "@/lib/claude";
 
 type EquipmentRow = {
   type: string;
@@ -41,13 +42,14 @@ type SetRow = {
 export default async function ActiveSessionPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) redirect("/login");
 
   const ws = await prisma.workoutSession.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       sets: { orderBy: [{ exerciseId: "asc" }, { setNumber: "asc" }] },
       programDay: {
@@ -144,6 +146,7 @@ export default async function ActiveSessionPage({
 
       <ActiveSessionClient
         sessionId={ws.id}
+        claudeEnabled={isClaudeConfigured()}
         completed={!!ws.completedAt}
         initialNotes={ws.notes ?? ""}
         items={itemsWithPx}

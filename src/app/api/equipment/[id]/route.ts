@@ -23,12 +23,13 @@ async function findOwned(itemId: string, userId: string) {
   return owned ? item : null;
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const existing = await findOwned(params.id, session.user.id);
+  const { id } = await params;
+  const existing = await findOwned(id, session.user.id);
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -41,7 +42,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const data = parsed.data;
 
   const updated = await prisma.equipment.update({
-    where: { id: params.id },
+    where: { id },
     data: {
       label: data.label !== undefined ? data.label?.trim() || null : undefined,
       weightsKg:
@@ -66,15 +67,16 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   });
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const existing = await findOwned(params.id, session.user.id);
+  const { id } = await params;
+  const existing = await findOwned(id, session.user.id);
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-  await prisma.equipment.delete({ where: { id: params.id } });
+  await prisma.equipment.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }

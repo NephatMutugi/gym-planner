@@ -17,13 +17,14 @@ const SetSchema = z.object({
 });
 
 // POST /api/sessions/:id/sets — upsert a set by (sessionId, exerciseId, setNumber)
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const ws = await prisma.workoutSession.findUnique({ where: { id: params.id } });
+  const { id } = await params;
+  const ws = await prisma.workoutSession.findUnique({ where: { id } });
   if (!ws || ws.userId !== session.user.id) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
