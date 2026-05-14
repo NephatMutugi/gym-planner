@@ -26,6 +26,7 @@ const ProfileSchema = z.object({
   daysPerWeek: z.number().int().min(1).max(7),
   sessionMinutes: z.number().int().min(15).max(180),
   injuries: z.array(z.string().min(1).max(60)).max(20).default([]),
+  postpartumWeeks: z.number().int().min(0).max(260).nullable().optional(),
 });
 
 export async function PUT(req: NextRequest) {
@@ -57,6 +58,7 @@ export async function PUT(req: NextRequest) {
       daysPerWeek: data.daysPerWeek,
       sessionMinutes: data.sessionMinutes,
       injuries: JSON.stringify(data.injuries),
+      postpartumWeeks: data.postpartumWeeks ?? null,
       onboarded: true,
     },
     select: { id: true, onboarded: true },
@@ -83,6 +85,7 @@ export async function GET() {
       daysPerWeek: true,
       sessionMinutes: true,
       injuries: true,
+      postpartumWeeks: true,
       onboarded: true,
       householdId: true,
     },

@@ -89,6 +89,7 @@ model User {
   sessions         Session[]
   privateEquipment Equipment[] @relation("UserEquipment")
   programs         Program[]
+  workoutSessions  WorkoutSession[]
 }
 
 model Equipment {
@@ -133,7 +134,8 @@ model ProgramDay {
   label     String        // e.g. "Full body A", "Upper", "Push"
   isRestDay Boolean       @default(false)
 
-  items ProgramItem[]
+  items    ProgramItem[]
+  sessions WorkoutSession[]
 
   @@index([programId, order])
 }
@@ -153,4 +155,41 @@ model ProgramItem {
   notes        String?
 
   @@index([dayId, order])
+}
+
+// --- Phase 3: Workout logging ---
+
+model WorkoutSession {
+  id           String       @id @default(cuid())
+  userId       String
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  programDayId String?
+  programDay   ProgramDay?  @relation(fields: [programDayId], references: [id], onDelete: SetNull)
+  startedAt    DateTime     @default(now())
+  completedAt  DateTime?
+  notes        String?
+
+  sets SetLog[]
+
+  @@index([userId, startedAt])
+  @@index([userId, completedAt])
+}
+
+model SetLog {
+  id            String         @id @default(cuid())
+  sessionId     String
+  session       WorkoutSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  exerciseId    String         // Matches Exercise.id in src/data/exercises.ts
+  programItemId String?        // Reference to the prescribed ProgramItem if applicable
+  setNumber     Int            // 1, 2, 3, ...
+  weightKg      Float?         // null for bodyweight or skipped
+  reps          Int?           // null for iso holds or skipped
+  holdSeconds   Int?           // for iso holds
+  rpe           Float?         // 1-10, perceived exertion (optional)
+  skipped       Boolean        @default(false)
+  notes         String?
+  loggedAt      DateTime       @default(now())
+
+  @@index([sessionId, setNumber])
+  @@index([exerciseId])
 }
