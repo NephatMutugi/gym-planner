@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { EXERCISE_BY_ID } from "@/data/exercises";
 import CoachSheet from "@/components/CoachSheet";
+import { drainQueue, enqueueSet, pendingCountFor } from "@/lib/offline-queue";
 
 type Prescription = {
   targetLoadKg: number | null;
@@ -65,6 +66,40 @@ export default function ActiveSessionClient({
   claudeEnabled: boolean;
 }) {
   const router = useRouter();
+
+  // --- Online/offline awareness + drain queue on mount ---
+  const [isOnline, setIsOnline] = useState(true);
+  const [pendingSets, setPendingSets] = useState(0);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const refresh = () => {
+      setIsOnline(window.navigator.onLine);
+      setPendingSets(pendingCountFor(sessionId));
+    };
+    refresh();
+    const onOnline = async () => {
+      setIsOnline(true);
+      const result = await drainQueue();
+      if (result.ok > 0) {
+        // Refresh the page to show the latest state including drained sets
+        setPendingSets(pendingCountFor(sessionId));
+        router.refresh();
+      }
+    };
+    const onOffline = () => setIsOnline(false);
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    // Drain immediately on mount in case we were just offline
+    if (window.navigator.onLine) {
+      drainQueue().then(() => setPendingSets(pendingCountFor(sessionId)));
+    }
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
+  }, [sessionId, router]);
+
   const [notes, setNotes] = useState(initialNotes);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -213,17 +248,38 @@ export default function ActiveSessionClient({
     };
 
     setLocalField(effectiveExerciseId, setNumber, "status", "saving");
-    const res = await fetch(`/api/sessions/${sessionId}/sets`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "Could not save set");
-      setLocalField(effectiveExerciseId, setNumber, "status", "pending");
+
+    // If we know we're offline, queue immediately and show as logged optimistically.
+    if (typeof window !== "undefined" && !window.navigator.onLine) {
+      enqueueSet({ sessionId, payload, queuedAt: Date.now() });
+      setPendingSets(pendingCountFor(sessionId));
+      setLocalField(
+        effectiveExerciseId,
+        setNumber,
+        "status",
+        options.skipped ? "skipped" : "logged"
+      );
       return;
     }
+
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}/sets`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "Could not save set");
+        setLocalField(effectiveExerciseId, setNumber, "status", "pending");
+        return;
+      }
+    } catch {
+      // Network error mid-request → queue and continue optimistically
+      enqueueSet({ sessionId, payload, queuedAt: Date.now() });
+      setPendingSets(pendingCountFor(sessionId));
+    }
+
     setLocalField(
       effectiveExerciseId,
       setNumber,
@@ -263,6 +319,25 @@ export default function ActiveSessionClient({
 
   return (
     <div className="flex flex-col gap-4">
+      {(!isOnline || pendingSets > 0) && (
+        <div
+          className="card text-xs"
+          style={{ borderColor: !isOnline ? "var(--danger)" : "var(--accent)" }}
+        >
+          {!isOnline && (
+            <p>
+              <strong>Offline.</strong> Sets you log will sync automatically
+              when you&apos;re back online.
+            </p>
+          )}
+          {pendingSets > 0 && (
+            <p className={!isOnline ? "mt-1" : ""}>
+              {pendingSets} set{pendingSets === 1 ? "" : "s"} pending sync.
+            </p>
+          )}
+        </div>
+      )}
+
       {items.map((it) => {
         const effectiveExerciseId = swappedExerciseIds[it.programItemId] ?? it.exerciseId;
         const ex = EXERCISE_BY_ID[effectiveExerciseId];

@@ -128,6 +128,22 @@ export default function DashboardClient({
         </Link>
 
 
+
+        <Link
+          href="/insights"
+          className="card flex items-center justify-between gap-3 cursor-pointer hover:border-[var(--accent)] active:opacity-80 transition-colors"
+        >
+          <div>
+            <p className="text-xs uppercase tracking-wide text-[var(--fg-muted)]">
+              Insights
+            </p>
+            <p className="mt-1 font-semibold">Sessions, volume, bests</p>
+          </div>
+          <span aria-hidden className="text-[var(--accent)] text-xl leading-none">
+            →
+          </span>
+        </Link>
+
         <Link
           href="/history"
           className="card flex items-center justify-between gap-3 cursor-pointer hover:border-[var(--accent)] active:opacity-80 transition-colors"

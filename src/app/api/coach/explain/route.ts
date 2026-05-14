@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
+import { consume, COACH_LIMIT } from "@/lib/rate-limit";
 import { prisma } from "@/lib/prisma";
 import { complete, isClaudeConfigured } from "@/lib/claude";
 import { EXERCISE_BY_ID, MUSCLE_LABELS } from "@/data/exercises";
@@ -21,6 +22,16 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rl = consume(`coach:${session.user.id}`, COACH_LIMIT);
+  if (!rl.ok) {
+    return NextResponse.json(
+      {
+        error: `Slow down — try again in ${rl.retryAfterSec}s`,
+      },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } }
+    );
   }
 
   if (!isClaudeConfigured()) {
