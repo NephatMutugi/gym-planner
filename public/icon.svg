@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="120" fill="#0b0d10"/>
+  <rect width="512" height="512" rx="120" fill="#0d9488"/>
   <!-- dumbbell bar -->
-  <rect x="148" y="240" width="216" height="32" rx="16" fill="#5eead4"/>
+  <rect x="148" y="240" width="216" height="32" rx="16" fill="#ffffff"/>
   <!-- left weight stack -->
-  <rect x="92" y="200" width="40" height="112" rx="14" fill="#5eead4"/>
-  <rect x="64" y="220" width="32" height="72" rx="12" fill="#5eead4" opacity="0.85"/>
+  <rect x="92" y="200" width="40" height="112" rx="14" fill="#ffffff"/>
+  <rect x="64" y="220" width="32" height="72" rx="12" fill="#ffffff" opacity="0.85"/>
   <!-- right weight stack -->
-  <rect x="380" y="200" width="40" height="112" rx="14" fill="#5eead4"/>
-  <rect x="416" y="220" width="32" height="72" rx="12" fill="#5eead4" opacity="0.85"/>
+  <rect x="380" y="200" width="40" height="112" rx="14" fill="#ffffff"/>
+  <rect x="416" y="220" width="32" height="72" rx="12" fill="#ffffff" opacity="0.85"/>
 </svg>

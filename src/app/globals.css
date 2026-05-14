@@ -3,13 +3,14 @@
 @tailwind utilities;
 
 :root {
-  --bg: #0b0d10;
-  --bg-elev: #14181d;
-  --border: #2a2f36;
-  --fg: #e9eef5;
-  --fg-muted: #9aa3b2;
-  --accent: #5eead4;
-  --danger: #f87171;
+  --bg: #ffffff;
+  --bg-elev: #f8fafc;
+  --border: #e2e8f0;
+  --fg: #0f172a;
+  --fg-muted: #64748b;
+  --accent: #0d9488;
+  --accent-fg: #ffffff;
+  --danger: #dc2626;
 }
 
 html,
@@ -23,6 +24,11 @@ body {
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
   min-height: 100dvh;
+  /* iOS safe areas so content doesn't sit under the notch or home indicator */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 input,
@@ -36,7 +42,7 @@ button {
 input,
 select,
 textarea {
-  background: var(--bg-elev);
+  background: #ffffff;
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 12px 14px;
@@ -48,6 +54,7 @@ input:focus,
 select:focus,
 textarea:focus {
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
 }
 
 button {
@@ -76,11 +83,11 @@ button {
 
 .btn-primary {
   background: var(--accent);
-  color: #082420;
+  color: var(--accent-fg);
 }
 
 .btn-ghost {
-  background: transparent;
+  background: #ffffff;
   border-color: var(--border);
   color: var(--fg);
 }

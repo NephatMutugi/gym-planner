@@ -479,7 +479,7 @@ export default function ActiveSessionClient({
                           className={
                             "px-3 py-1.5 rounded-lg text-sm font-semibold " +
                             (isLogged
-                              ? "bg-[var(--accent)] text-[#082420]"
+                              ? "bg-[var(--accent)] text-white"
                               : "border border-[var(--border)] text-[var(--fg-muted)]")
                           }
                           disabled={cur.status === "saving"}

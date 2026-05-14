@@ -123,7 +123,7 @@ export default function WorkoutClient({
             className={
               "shrink-0 rounded-full border px-3 py-1.5 text-sm " +
               (i === dayIndex
-                ? "border-[var(--accent)] bg-[var(--accent)] text-[#082420] font-semibold"
+                ? "border-[var(--accent)] bg-[var(--accent)] text-white font-semibold"
                 : "border-[var(--border)] bg-[var(--bg-elev)] text-[var(--fg-muted)]")
             }
           >

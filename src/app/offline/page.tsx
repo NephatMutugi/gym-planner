@@ -2,7 +2,7 @@
 
 export default function OfflinePage() {
   return (
-    <main className="mx-auto max-w-md min-h-[100dvh] flex flex-col items-stretch justify-center p-6 gap-6">
+    <main className="mx-auto max-w-md min-h-[100dvh] flex flex-col p-6 pt-16 sm:pt-24 gap-6">
       <div className="space-y-3">
         <h1 className="text-3xl font-bold tracking-tight">You&apos;re offline</h1>
         <p className="text-[var(--fg-muted)] leading-relaxed">

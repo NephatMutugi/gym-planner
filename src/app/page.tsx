@@ -16,7 +16,7 @@ export default async function Home() {
   }
 
   return (
-    <main className="mx-auto max-w-md min-h-[100dvh] flex flex-col items-stretch justify-center p-6 gap-10">
+    <main className="mx-auto max-w-md min-h-[100dvh] flex flex-col p-6 pt-16 sm:pt-24 gap-8">
       <div className="space-y-3">
         <h1 className="text-3xl font-bold tracking-tight">Gym Planner</h1>
         <p className="text-[var(--fg-muted)] leading-relaxed">
