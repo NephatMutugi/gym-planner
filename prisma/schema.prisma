@@ -1,13 +1,16 @@
-// Gym Planner — Phase 2 schema
-// SQLite for local dev. JSON-string fields used where arrays would be needed.
+// Gym Planner schema
+// Postgres (Neon) for both local dev and production.
+// JSON-string fields used for arrays (legacy from SQLite); can migrate to
+// native String[] columns in a future phase.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // --- NextAuth required tables ---
