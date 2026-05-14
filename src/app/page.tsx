@@ -16,15 +16,15 @@ export default async function Home() {
   }
 
   return (
-    <main className="mx-auto max-w-md min-h-[100dvh] flex flex-col justify-between p-6">
-      <div className="pt-16">
+    <main className="mx-auto max-w-md min-h-[100dvh] flex flex-col items-stretch justify-center p-6 gap-10">
+      <div className="space-y-3">
         <h1 className="text-3xl font-bold tracking-tight">Gym Planner</h1>
-        <p className="mt-3 text-[var(--fg-muted)] leading-relaxed">
+        <p className="text-[var(--fg-muted)] leading-relaxed">
           A pocket-sized strength coach for your home gym. Tell us what you
           own, what you&apos;re training for, and we&apos;ll handle the rest.
         </p>
       </div>
-      <div className="pb-8 flex flex-col gap-3">
+      <div className="flex flex-col gap-3">
         <Link href="/signup" className="btn btn-primary">
           Get started
         </Link>

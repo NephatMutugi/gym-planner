@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { availableExercises, inventoryFromDb } from "@/lib/equipment";
 import DashboardClient from "./DashboardClient";
 
 export default async function DashboardPage() {
@@ -17,6 +18,19 @@ export default async function DashboardPage() {
 
   const goals: string[] = user.goals ? JSON.parse(user.goals) : [];
   const injuries: string[] = user.injuries ? JSON.parse(user.injuries) : [];
+
+  // Counts for nav cards
+  const equipmentRows = await prisma.equipment.findMany({
+    where: {
+      OR: [
+        { userId: session.user.id },
+        user.householdId ? { householdId: user.householdId } : { id: "__never__" },
+      ],
+    },
+    select: { id: true, type: true, weightsKg: true, label: true },
+  });
+  const inv = inventoryFromDb(equipmentRows);
+  const exerciseCount = availableExercises(inv).length;
 
   return (
     <DashboardClient
@@ -35,6 +49,8 @@ export default async function DashboardPage() {
       }}
       householdName={user.household?.name ?? null}
       householdInviteCode={user.household?.inviteCode ?? null}
+      equipmentCount={equipmentRows.length}
+      exerciseCount={exerciseCount}
     />
   );
 }

@@ -1,14 +1,12 @@
 # Gym Planner — Local Setup
 
-Phase 0 only. The project compiles cleanly in TypeScript and ships:
+## What's in the app (Phase 0 + 1)
 
-- Email + password auth (NextAuth credentials + bcrypt)
-- User profile model: name, age, gender, height, weight, experience, goals (multi-select, per user), days/week, session length, injuries
-- Optional households (create or join via 6-char invite code) for sharing equipment with a partner
-- Mobile-first dark UI, no native fonts
-- SQLite for local development
+**Phase 0:** Auth, profile, optional households.
 
-Equipment editor, exercise library, and plan generation come in Phase 1+.
+**Phase 1:** Free-form equipment editor, curated exercise library (60+ moves), filter logic that shows only the exercises you can actually do with what you own.
+
+Equipment → exercise filter is pure-functional and reusable for Phase 2 (plan generation) and Phase 3 (load prescription).
 
 ## Prerequisites
 
@@ -16,8 +14,6 @@ Equipment editor, exercise library, and plan generation come in Phase 1+.
 - macOS, Linux, or WSL
 
 ## First-time setup
-
-From the project root:
 
 ```
 npm install
@@ -28,24 +24,16 @@ npm run dev
 
 Open http://localhost:3000
 
-The first command (`npm install`) may take a minute. `prisma db push` creates `prisma/dev.db` (SQLite, gitignored).
-
-## Environment
-
-`.env` is checked in with development defaults. Before deploying anywhere real, replace `NEXTAUTH_SECRET` with the output of:
-
-```
-openssl rand -base64 32
-```
+The Equipment model was already in the Phase 0 schema, so no new `prisma db push` is needed beyond the initial one.
 
 ## What to try
 
-1. Visit `/` — landing page with **Get started** button
-2. Sign up with any email + 8+ char password
-3. Walk through the 6-step onboarding (basics, body, goals, schedule, injuries, optional household)
-4. Land on `/dashboard` showing your saved profile
+1. Sign up → walk the 6-step onboarding → land on the dashboard
+2. Tap the **Equipment** card → add your dumbbells (e.g. 2, 5, 10 kg) and anything else you own
+3. Back to dashboard, tap **Exercises** → see the filtered library grouped by movement pattern
+4. Add a kettlebell or remove dumbbells → notice the exercise list updates accordingly
 
-Sign out from the dashboard to test login.
+The exercise count on the dashboard updates from the server on each page load, so after adding equipment, navigate back to `/dashboard` to see it bump.
 
 ## Useful scripts
 
@@ -58,61 +46,73 @@ Sign out from the dashboard to test login.
 
 ```
 prisma/
-  schema.prisma         # Data model (User, Household, Equipment + NextAuth tables)
+  schema.prisma                    # User, Household, Equipment + NextAuth tables
 src/
+  data/
+    exercises.ts                   # 60+ curated exercises (source of truth)
   lib/
-    prisma.ts           # Prisma client singleton
-    auth.ts             # NextAuth config (Credentials provider, JWT sessions)
+    prisma.ts                      # Prisma client singleton
+    auth.ts                        # NextAuth config
+    equipment.ts                   # Inventory filter + load prescription
   types/
-    next-auth.d.ts      # Session type augmentation (user.id)
+    next-auth.d.ts
   components/
     SessionProviderWrapper.tsx
   app/
-    layout.tsx          # Root layout, wraps in SessionProvider
-    page.tsx            # Landing (redirects if logged in)
-    globals.css         # Tailwind + design tokens
+    layout.tsx
+    page.tsx                       # Landing
+    globals.css
     (auth)/
       signup/page.tsx
       login/page.tsx
-    onboarding/page.tsx # 6-step wizard
+    onboarding/page.tsx            # 6-step wizard
     dashboard/
-      page.tsx          # Server: loads profile
+      page.tsx
       DashboardClient.tsx
+    equipment/
+      page.tsx                     # Server: load inventory
+      EquipmentClient.tsx          # Client: add/remove items
+    exercises/
+      page.tsx                     # Filtered library, grouped by pattern
     api/
-      auth/[...nextauth]/route.ts  # NextAuth handler
-      auth/signup/route.ts          # POST /api/auth/signup
-      profile/route.ts              # GET/PUT /api/profile
-      household/route.ts            # POST/DELETE /api/household
+      auth/
+        [...nextauth]/route.ts
+        signup/route.ts
+      profile/route.ts
+      household/route.ts
+      equipment/
+        route.ts                   # GET/POST equipment
+        [id]/route.ts              # PUT/DELETE equipment
 ```
+
+## How the filter works
+
+`src/lib/equipment.ts` exposes:
+
+- `canPerform(exercise, inventory)` — true if all required equipment types are in the inventory
+- `availableExercises(inventory)` — full filtered list
+- `exercisesByPattern(inventory)` — grouped by movement pattern for UI
+- `prescribeLoad(exercise, inventory, targetKg)` — rounds a target to the nearest weight the user can actually load (used in Phase 3)
+
+Bodyweight exercises (`equipment: []`) are always available.
+
+## Adding more exercises
+
+Open `src/data/exercises.ts` and add another entry to the `EXERCISES` array. The fields are typed; new exercises automatically flow through the filter and into the browser UI.
+
+## Household sharing
+
+If a user is in a household, new equipment defaults to **household-shared** scope. Each user can also add **personal** items (their own DBs at the in-laws', a band they take traveling, etc.). Solo users get personal-only items by default.
 
 ## What was verified in the sandbox
 
-- All source files written
-- `npx tsc --noEmit` passes (no TypeScript errors)
-- File structure matches the planned architecture
+- `npx tsc --noEmit` — zero TypeScript errors
+- `next build` — compiles, lints, and type-checks all routes; stops only at Prisma client init (sandbox can't fetch Prisma's binary engines; works on your machine)
 
 ## What you'll verify locally
 
-- `npx prisma generate` (sandbox couldn't reach Prisma's engine CDN)
-- `npx prisma db push` (creates SQLite DB)
-- `npm run dev` (start the server)
-- Sign up → onboarding → dashboard end-to-end
-
-## Notes on data shape
-
-SQLite doesn't natively support array columns. Two fields are stored as JSON strings and parsed in code:
-
-- `User.goals` — `'["strength","general_fitness"]'`
-- `User.injuries` — `'["lower back","left knee"]'`
-- `Equipment.weightsKg` — `'[2, 5, 10]'` (Phase 1 will write to this)
-
-When swapping to Postgres later, these can become `String[]` columns; the parsing layer is a thin wrapper in the API routes.
-
-## Two profiles, same household
-
-You can test the partner flow by:
-
-1. Signing up as user A → in onboarding step 6, create a household and copy the invite code
-2. Sign out → sign up as user B with a different email → in onboarding step 6, join with that code
-
-Both users now share the same household. In Phase 1 they'll share the equipment inventory but get independently generated programs from their distinct goals.
+- Sign up flow → onboarding → dashboard
+- Equipment editor: add dumbbell pair (2, 5, 10) → see it appear with weight chips
+- Exercises page: should show ~28 moves matching dumbbell + bodyweight (rises if you also add bench, kettlebell, etc.)
+- Delete an item from equipment → exercises list shrinks accordingly
+- (If you set up a household) Add a household-shared item from one account → it's visible from another account that joined via invite code

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { signOut } from "next-auth/react";
 
 type Profile = {
@@ -20,12 +21,16 @@ export default function DashboardClient({
   profile,
   householdName,
   householdInviteCode,
+  equipmentCount,
+  exerciseCount,
 }: {
   name: string;
   email: string;
   profile: Profile;
   householdName: string | null;
   householdInviteCode: string | null;
+  equipmentCount: number;
+  exerciseCount: number;
 }) {
   return (
     <main className="mx-auto max-w-md min-h-[100dvh] flex flex-col p-6 gap-5">
@@ -43,13 +48,49 @@ export default function DashboardClient({
         </button>
       </header>
 
-      <div className="card">
-        <h2 className="text-base font-semibold">Phase 0 complete</h2>
-        <p className="mt-1 text-sm text-[var(--fg-muted)]">
-          Account, profile, and household setup are working. Equipment editor,
-          exercise library, and program generation come next.
-        </p>
-      </div>
+      <nav className="flex flex-col gap-3">
+        <Link
+          href="/equipment"
+          className="card flex items-center justify-between gap-3 cursor-pointer hover:border-[var(--accent)] active:opacity-80 transition-colors"
+        >
+          <div>
+            <p className="text-xs uppercase tracking-wide text-[var(--fg-muted)]">
+              Equipment
+            </p>
+            <p className="mt-1 font-semibold">
+              {equipmentCount === 0
+                ? "Add what you own"
+                : `${equipmentCount} ${equipmentCount === 1 ? "item" : "items"}`}
+            </p>
+          </div>
+          <span
+            aria-hidden
+            className="text-[var(--accent)] text-xl leading-none"
+          >
+            →
+          </span>
+        </Link>
+
+        <Link
+          href="/exercises"
+          className="card flex items-center justify-between gap-3 cursor-pointer hover:border-[var(--accent)] active:opacity-80 transition-colors"
+        >
+          <div>
+            <p className="text-xs uppercase tracking-wide text-[var(--fg-muted)]">
+              Exercises
+            </p>
+            <p className="mt-1 font-semibold">
+              {exerciseCount} available to you
+            </p>
+          </div>
+          <span
+            aria-hidden
+            className="text-[var(--accent)] text-xl leading-none"
+          >
+            →
+          </span>
+        </Link>
+      </nav>
 
       <div className="card">
         <h3 className="text-sm font-semibold text-[var(--fg-muted)] uppercase tracking-wide">
