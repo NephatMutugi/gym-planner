@@ -13,7 +13,10 @@ const SetSchema = z.object({
   rpe: z.number().min(1).max(10).nullable().optional(),
   skipped: z.boolean().optional(),
   notes: z.string().max(200).nullable().optional(),
+  // Legacy: existing clients pass the SessionItem.id under the name
+  // `programItemId`. New clients may send `sessionItemId` explicitly.
   programItemId: z.string().nullable().optional(),
+  sessionItemId: z.string().nullable().optional(),
 });
 
 // POST /api/sessions/:id/sets — upsert a set by (sessionId, exerciseId, setNumber)
@@ -48,8 +51,31 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     },
   });
 
+  // Resolve the SessionItem for this set. The legacy client passes the
+  // SessionItem.id under `programItemId`; we accept either spelling. If the
+  // claimed id doesn't belong to this session, fall back to matching by
+  // exerciseId so partially-migrated data still links cleanly.
+  const claimedItemId = data.sessionItemId ?? data.programItemId ?? null;
+  let resolvedSessionItemId: string | null = null;
+  if (claimedItemId) {
+    const claimed = await prisma.sessionItem.findFirst({
+      where: { id: claimedItemId, sessionId: ws.id },
+      select: { id: true },
+    });
+    resolvedSessionItemId = claimed?.id ?? null;
+  }
+  if (!resolvedSessionItemId) {
+    const fallback = await prisma.sessionItem.findFirst({
+      where: { sessionId: ws.id, exerciseId: data.exerciseId },
+      orderBy: { order: "asc" },
+      select: { id: true },
+    });
+    resolvedSessionItemId = fallback?.id ?? null;
+  }
+
   const payload = {
     sessionId: ws.id,
+    sessionItemId: resolvedSessionItemId,
     exerciseId: data.exerciseId,
     setNumber: data.setNumber,
     weightKg: data.weightKg ?? null,
@@ -58,6 +84,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     rpe: data.rpe ?? null,
     skipped: data.skipped ?? false,
     notes: data.notes ?? null,
+    // Keep the legacy column populated when the caller actually meant a
+    // ProgramItem id; otherwise null. This will be removed in a later phase
+    // once we're confident SessionItem links everything.
     programItemId: data.programItemId ?? null,
   };
 

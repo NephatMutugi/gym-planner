@@ -24,16 +24,21 @@ type SetRow = {
   notes: string | null;
 };
 
-type ProgramItem = {
+type SessionItemRow = {
   id: string;
+  sourceProgramItemId: string | null;
+  exerciseId: string | null;
+  customName: string | null;
   order: number;
-  exerciseId: string;
   sets: number;
   repsMin: number;
   repsMax: number;
   targetLoadKg: number | null;
   holdSeconds: number | null;
   restSeconds: number;
+  notes: string | null;
+  status: "PENDING" | "SKIPPED" | "REMOVED";
+  addedDuringSession: boolean;
 };
 
 type EquipmentRow = {
@@ -54,9 +59,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     where: { id },
     include: {
       sets: { orderBy: [{ exerciseId: "asc" }, { setNumber: "asc" }] },
+      items: { orderBy: { order: "asc" } },
       programDay: {
-        include: {
-          items: { orderBy: { order: "asc" } },
+        select: {
+          label: true,
           program: { select: { id: true } },
         },
       },
@@ -66,7 +72,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  // Build prescriptions for each program item using progression logic
+  // Build prescriptions for each session item using progression logic
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: { householdId: true },
@@ -82,12 +88,38 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   });
   const inventory = inventoryFromDb(equipmentRows as EquipmentRow[]);
 
-  const items: ProgramItem[] = ws.programDay?.items ?? [];
+  // Hide REMOVED items from the session view. SKIPPED items stay visible so
+  // the user can undo them.
+  const items: SessionItemRow[] = (ws.items ?? []).filter(
+    (it: SessionItemRow) => it.status !== "REMOVED"
+  );
 
   // For each item, look up the most recent completed session that logged this exercise
   // (excluding this session itself) and apply progression.
   const prescriptions = await Promise.all(
-    items.map(async (it: ProgramItem) => {
+    items.map(async (it: SessionItemRow) => {
+      // Custom (free-form) items don't progress and have no library exercise.
+      if (!it.exerciseId) {
+        return {
+          sessionItemId: it.id,
+          programItemId: it.sourceProgramItemId,
+          order: it.order,
+          exerciseId: null,
+          customName: it.customName,
+          sets: it.sets,
+          status: it.status,
+          addedDuringSession: it.addedDuringSession,
+          prescription: {
+            targetLoadKg: it.targetLoadKg,
+            repsMin: it.repsMin,
+            repsMax: it.repsMax,
+            holdSeconds: it.holdSeconds,
+          },
+          previousBest: null,
+          restSeconds: it.restSeconds,
+        };
+      }
+
       const previous = await prisma.workoutSession.findFirst({
         where: {
           userId: session.user.id,
@@ -120,10 +152,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         ? nextPrescription(exercise, current, lastSets, inventory)
         : current;
       return {
-        programItemId: it.id,
+        sessionItemId: it.id,
+        programItemId: it.sourceProgramItemId,
         order: it.order,
         exerciseId: it.exerciseId,
+        customName: null,
         sets: it.sets,
+        status: it.status,
+        addedDuringSession: it.addedDuringSession,
         prescription: next,
         previousBest:
           previous && lastSets.length > 0
@@ -147,6 +183,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       notes: ws.notes,
       dayLabel: ws.programDay?.label ?? "Workout",
       programId: ws.programDay?.program?.id ?? null,
+      hasRemovedItems: (ws.items ?? []).some(
+        (it: SessionItemRow) => it.status === "REMOVED"
+      ),
     },
     items: prescriptions,
     sets: ws.sets.map((s: SetRow) => ({

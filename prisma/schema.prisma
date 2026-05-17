@@ -172,18 +172,63 @@ model WorkoutSession {
   completedAt  DateTime?
   notes        String?
 
-  sets SetLog[]
+  sets  SetLog[]
+  items SessionItem[]
 
   @@index([userId, startedAt])
   @@index([userId, completedAt])
+}
+
+// Per-session snapshot of the prescribed exercise list. Created at session start
+// from the ProgramDay's items; afterwards owned by the session so the user can
+// add, skip, remove, or replace exercises without touching their program template.
+//
+// status:
+//   PENDING  – default; counts toward progression
+//   SKIPPED  – user marked it intentionally not done; kept visible with an undo
+//   REMOVED  – soft-deleted from this session; hidden by default but kept for audit
+//
+// exerciseId is nullable to allow free-form custom entries (foam rolling, etc.)
+// captured by customName instead. Custom items never feed back into progression.
+model SessionItem {
+  id                  String            @id @default(cuid())
+  sessionId           String
+  session             WorkoutSession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sourceProgramItemId String?           // Null when added during the session (no original prescription)
+  exerciseId          String?           // Matches Exercise.id; null for custom entries
+  customName          String?           // Used when exerciseId is null
+  order               Int               // Display order within the session
+  sets                Int
+  repsMin             Int
+  repsMax             Int
+  targetLoadKg        Float?
+  holdSeconds         Int?
+  restSeconds         Int
+  notes               String?
+  status              SessionItemStatus @default(PENDING)
+  addedDuringSession  Boolean           @default(false)
+  createdAt           DateTime          @default(now())
+
+  setLogs SetLog[]
+
+  @@index([sessionId, order])
+  @@index([sessionId, status])
+}
+
+enum SessionItemStatus {
+  PENDING
+  SKIPPED
+  REMOVED
 }
 
 model SetLog {
   id            String         @id @default(cuid())
   sessionId     String
   session       WorkoutSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionItemId String?        // Reference to the SessionItem this set belongs to
+  sessionItem   SessionItem?   @relation(fields: [sessionItemId], references: [id], onDelete: SetNull)
   exerciseId    String         // Matches Exercise.id in src/data/exercises.ts
-  programItemId String?        // Reference to the prescribed ProgramItem if applicable
+  programItemId String?        // Legacy: original prescription. SessionItem.sourceProgramItemId is the new source of truth.
   setNumber     Int            // 1, 2, 3, ...
   weightKg      Float?         // null for bodyweight or skipped
   reps          Int?           // null for iso holds or skipped
@@ -194,5 +239,6 @@ model SetLog {
   loggedAt      DateTime       @default(now())
 
   @@index([sessionId, setNumber])
+  @@index([sessionItemId, setNumber])
   @@index([exerciseId])
 }
