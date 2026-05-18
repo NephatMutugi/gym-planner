@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Script from "next/script";
 import SessionProviderWrapper from "@/components/SessionProviderWrapper";
+import BottomNavGate from "@/components/BottomNavGate";
+import AppShell from "@/components/AppShell";
 
 export const metadata: Metadata = {
   title: "Gym Planner",
@@ -33,7 +35,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
-        <SessionProviderWrapper>{children}</SessionProviderWrapper>
+        <SessionProviderWrapper>
+          <AppShell>{children}</AppShell>
+        </SessionProviderWrapper>
+        <BottomNavGate />
         <Script id="sw-register" strategy="afterInteractive">
           {`
             if ("serviceWorker" in navigator) {
