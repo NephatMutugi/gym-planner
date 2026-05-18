@@ -54,22 +54,22 @@ export default function DashboardClient({
   }
 
   return (
-    <main className="mx-auto max-w-md min-h-[100dvh] flex flex-col p-6 gap-5">
+    <main className="mx-auto w-full max-w-md md:max-w-5xl min-h-[100dvh] flex flex-col p-6 md:px-10 md:py-10 gap-5">
       <header className="pt-4 flex items-start justify-between">
         <div>
           <p className="text-sm text-[var(--fg-muted)]">Welcome back,</p>
-          <h1 className="text-2xl font-bold">{name}</h1>
+          <h1 className="text-2xl md:text-3xl font-bold">{name}</h1>
         </div>
         <button
           type="button"
           onClick={() => signOut({ callbackUrl: "/" })}
-          className="text-sm text-[var(--fg-muted)] underline"
+          className="text-sm text-[var(--fg-muted)] underline md:hidden"
         >
           Sign out
         </button>
       </header>
 
-      <nav className="flex flex-col gap-3">
+      <nav className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <Link
           href="/workout"
           className="card flex items-center justify-between gap-3 cursor-pointer hover:border-[var(--accent)] active:opacity-80 transition-colors"

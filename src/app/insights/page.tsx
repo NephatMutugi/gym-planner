@@ -134,7 +134,7 @@ export default async function InsightsPage() {
   const totalVolume = weeks.reduce((sum, w) => sum + w.volume, 0);
 
   return (
-    <main className="mx-auto max-w-md min-h-[100dvh] flex flex-col p-6 gap-5">
+    <main className="mx-auto w-full max-w-md md:max-w-4xl min-h-[100dvh] flex flex-col p-6 md:px-10 md:py-10 gap-5">
       <header className="pt-2">
         <Link href="/dashboard" className="text-sm text-[var(--fg-muted)]">
           ← Dashboard
@@ -154,7 +154,7 @@ export default async function InsightsPage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="card">
               <p className="text-xs uppercase tracking-wide text-[var(--fg-muted)]">
                 Sessions

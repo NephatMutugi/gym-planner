@@ -17,7 +17,7 @@ type Props = {
 
 export default function AccountClient(props: Props) {
   return (
-    <main className="mx-auto max-w-md min-h-[100dvh] flex flex-col p-6 pt-12 gap-6">
+    <main className="mx-auto w-full max-w-md md:max-w-4xl min-h-[100dvh] flex flex-col p-6 md:px-10 md:py-10 pt-12 gap-6">
       <header>
         <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
         <p className="text-sm text-[var(--fg-muted)] mt-1">{props.email}</p>

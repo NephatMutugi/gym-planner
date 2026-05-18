@@ -50,7 +50,7 @@ export default async function WorkoutPage() {
 
   if (!program) {
     return (
-      <main className="mx-auto max-w-md min-h-[100dvh] flex flex-col p-6 gap-5">
+      <main className="mx-auto w-full max-w-md md:max-w-4xl min-h-[100dvh] flex flex-col p-6 md:px-10 md:py-10 gap-5">
         <header className="pt-2">
           <Link href="/dashboard" className="text-sm text-[var(--fg-muted)]">
             ← Dashboard
@@ -88,12 +88,12 @@ export default async function WorkoutPage() {
   const todayIndex = todayDayIndex(program.daysPerWeek, program.days.length);
 
   return (
-    <main className="mx-auto max-w-md min-h-[100dvh] flex flex-col p-6 gap-5">
+    <main className="mx-auto w-full max-w-md md:max-w-4xl min-h-[100dvh] flex flex-col p-6 md:px-10 md:py-10 gap-5">
       <header className="pt-2">
-        <Link href="/dashboard" className="text-sm text-[var(--fg-muted)]">
+        <Link href="/dashboard" className="text-sm text-[var(--fg-muted)] md:hidden">
           ← Dashboard
         </Link>
-        <h1 className="text-2xl font-bold mt-1">Workout</h1>
+        <h1 className="text-2xl md:text-3xl font-bold mt-1">Workout</h1>
         <p className="text-sm text-[var(--fg-muted)] mt-1">
           {program.split.replace(/_/g, " ")} · {program.daysPerWeek}×/week
         </p>

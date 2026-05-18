@@ -58,7 +58,7 @@ export default async function ExercisesPage() {
   }
 
   return (
-    <main className="mx-auto max-w-md min-h-[100dvh] flex flex-col p-6 gap-5">
+    <main className="mx-auto w-full max-w-md md:max-w-5xl min-h-[100dvh] flex flex-col p-6 md:px-10 md:py-10 gap-5">
       <header className="pt-2">
         <Link href="/dashboard" className="text-sm text-[var(--fg-muted)]">
           ← Dashboard
@@ -86,7 +86,7 @@ export default async function ExercisesPage() {
           <h2 className="text-xs uppercase tracking-wide text-[var(--fg-muted)] mb-2 px-1">
             {PATTERN_LABELS[pattern]} · {items.length}
           </h2>
-          <ul className="flex flex-col gap-2.5">
+          <ul className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
             {items.map((ex) => (
               <li key={ex.id} className="card">
                 <div className="flex items-start justify-between gap-3">

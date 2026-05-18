@@ -101,7 +101,7 @@ export default function EquipmentClient({
   }
 
   return (
-    <main className="mx-auto max-w-md min-h-[100dvh] flex flex-col p-6 gap-5">
+    <main className="mx-auto w-full max-w-md md:max-w-4xl min-h-[100dvh] flex flex-col p-6 md:px-10 md:py-10 gap-5">
       <header className="pt-2 flex items-center justify-between">
         <div>
           <Link href="/dashboard" className="text-sm text-[var(--fg-muted)]">

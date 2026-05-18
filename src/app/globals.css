@@ -99,11 +99,17 @@ button {
   padding: 20px;
 }
 
-/* When the bottom nav is rendered, reserve space at the bottom of each <main>
- * so content isn't hidden behind the fixed nav.  Specificity (element + attr +
- * descendant) beats the Tailwind p-6 utility on the page main, so the
- * page-supplied bottom padding gets overridden. The bar is ~64px tall; we
- * leave ~80px + the iOS safe area for comfortable breathing room. */
-body:has(nav[aria-label="Primary"]) main {
-  padding-bottom: calc(80px + env(safe-area-inset-bottom));
+/* On mobile, when the bottom nav is rendered, reserve space at the bottom of
+ * each <main> so content isn't hidden behind the fixed nav. Specificity
+ * (element + attr + descendant) beats the Tailwind p-6 utility on the page
+ * main, so the page-supplied bottom padding gets overridden. The bar is
+ * ~64px tall; we leave ~80px + the iOS safe area for comfortable breathing
+ * room. The rule is gated to small viewports because on desktop the
+ * SidebarNav (not the BottomNav) handles navigation, and the BottomNav
+ * element is still in the DOM (display:none) so the :has() selector would
+ * otherwise add wasted padding on wide screens. */
+@media (max-width: 767px) {
+  body:has(nav[aria-label="Primary"]) main {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom));
+  }
 }

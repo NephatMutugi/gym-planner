@@ -197,7 +197,7 @@ export default async function ActiveSessionPage({
   );
 
   return (
-    <main className="mx-auto max-w-md min-h-[100dvh] flex flex-col p-6 gap-4">
+    <main className="mx-auto w-full max-w-md md:max-w-2xl min-h-[100dvh] flex flex-col p-6 md:px-10 md:py-10 gap-4">
       <header className="pt-2">
         <Link href="/workout" className="text-sm text-[var(--fg-muted)]">
           ← Workout

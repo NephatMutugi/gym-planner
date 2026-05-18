@@ -31,7 +31,7 @@ export default async function HistoryPage() {
   const inProgress = sessions.filter((s: SessionRow) => !s.completedAt);
 
   return (
-    <main className="mx-auto max-w-md min-h-[100dvh] flex flex-col p-6 gap-5">
+    <main className="mx-auto w-full max-w-md md:max-w-5xl min-h-[100dvh] flex flex-col p-6 md:px-10 md:py-10 gap-5">
       <header className="pt-2">
         <Link href="/dashboard" className="text-sm text-[var(--fg-muted)]">
           ← Dashboard
@@ -59,7 +59,7 @@ export default async function HistoryPage() {
           <h2 className="text-xs uppercase tracking-wide text-[var(--fg-muted)] mb-2 px-1">
             In progress
           </h2>
-          <ul className="flex flex-col gap-2">
+          <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {inProgress.map((s: SessionRow) => (
               <li key={s.id}>
                 <Link
@@ -85,7 +85,7 @@ export default async function HistoryPage() {
           <h2 className="text-xs uppercase tracking-wide text-[var(--fg-muted)] mb-2 px-1">
             Completed
           </h2>
-          <ul className="flex flex-col gap-2">
+          <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {completed.map((s: SessionRow) => (
               <li key={s.id}>
                 <Link
