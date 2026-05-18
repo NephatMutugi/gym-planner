@@ -2,15 +2,62 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Theme tokens. Two modes share the same shape — light is the :root default,
+ * dark is applied via data-theme="dark" on <html>. A media query also flips to
+ * dark when the user has no explicit preference (theme="auto") and the OS is
+ * set to dark; the inline FOUC-prevention script in app/layout.tsx encodes the
+ * same logic so the first paint is correct.
+ *
+ * Accent: blue. Light uses blue-600 for contrast on white; dark uses blue-500
+ * (slightly brighter / less saturated relative to bg) to pop on the deep
+ * blue-tinted surface without "vibrating."
+ */
 :root {
   --bg: #ffffff;
   --bg-elev: #f8fafc;
   --border: #e2e8f0;
   --fg: #0f172a;
   --fg-muted: #64748b;
-  --accent: #0d9488;
+  --accent: #2563eb;          /* blue-600 */
   --accent-fg: #ffffff;
+  --accent-soft: rgba(37, 99, 235, 0.15);
   --danger: #dc2626;
+  --input-bg: #ffffff;
+  --shadow-elev: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+[data-theme="dark"] {
+  --bg: #0b1220;              /* deep blue-tinted near-black */
+  --bg-elev: #111a2e;         /* one elevation up */
+  --border: #1f2a44;
+  --fg: #f1f5f9;              /* off-white, not pure */
+  --fg-muted: #94a3b8;        /* slate-400 */
+  --accent: #3b82f6;          /* blue-500 — pops on dark */
+  --accent-fg: #ffffff;
+  --accent-soft: rgba(59, 130, 246, 0.22);
+  --danger: #f87171;          /* softer red for dark bg */
+  --input-bg: #0f1729;
+  --shadow-elev: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+/* If the user hasn't set an explicit preference (no data-theme on <html>),
+ * follow the OS via prefers-color-scheme. The FOUC script sets data-theme
+ * before paint, so this only catches the unset edge case (e.g., JS disabled). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b1220;
+    --bg-elev: #111a2e;
+    --border: #1f2a44;
+    --fg: #f1f5f9;
+    --fg-muted: #94a3b8;
+    --accent: #3b82f6;
+    --accent-fg: #ffffff;
+    --accent-soft: rgba(59, 130, 246, 0.22);
+    --danger: #f87171;
+    --input-bg: #0f1729;
+    --shadow-elev: 0 1px 2px rgba(0, 0, 0, 0.35);
+  }
 }
 
 html,
@@ -42,7 +89,7 @@ button {
 input,
 select,
 textarea {
-  background: #ffffff;
+  background: var(--input-bg);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 12px 14px;
@@ -54,7 +101,7 @@ input:focus,
 select:focus,
 textarea:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 button {
@@ -87,7 +134,7 @@ button {
 }
 
 .btn-ghost {
-  background: #ffffff;
+  background: var(--bg);
   border-color: var(--border);
   color: var(--fg);
 }

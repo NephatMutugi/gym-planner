@@ -45,8 +45,8 @@ export default function SidebarNav() {
                 "flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors " +
                 "focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] " +
                 (active
-                  ? "bg-[var(--bg)] text-[var(--accent)] font-semibold"
-                  : "text-[var(--fg-muted)] hover:bg-[var(--bg)] hover:text-[var(--fg)]")
+                  ? "bg-[var(--accent-soft)] text-[var(--accent)] font-semibold"
+                  : "text-[var(--fg-muted)] hover:bg-[var(--accent-soft)] hover:text-[var(--fg)]")
               }
             >
               <span aria-hidden="true" className="leading-none">

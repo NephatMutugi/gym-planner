@@ -286,7 +286,7 @@ export default function OnboardingPage() {
                     className={
                       "rounded-xl border px-3 py-3 text-sm " +
                       (form.gender === opt.value
-                        ? "border-[var(--accent)] bg-[var(--bg-elev)] text-white"
+                        ? "border-[var(--accent)] bg-[var(--bg-elev)] text-[var(--accent)] font-semibold"
                         : "border-[var(--border)] bg-[var(--bg-elev)] text-[var(--fg-muted)]")
                     }
                   >

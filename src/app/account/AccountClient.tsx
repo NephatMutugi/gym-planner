@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { signOut } from "next-auth/react";
+import ThemeToggle from "@/components/ThemeToggle";
 
 type Props = {
   name: string;
@@ -88,6 +89,21 @@ export default function AccountClient(props: Props) {
           title="Insights"
           subtitle="Volume, streaks, and trends"
         />
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <p className="text-xs uppercase tracking-wide text-[var(--fg-muted)] px-1">
+          Appearance
+        </p>
+        <div className="card flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <p className="font-semibold">Theme</p>
+            <p className="text-xs text-[var(--fg-muted)] mt-0.5">
+              Auto follows your device&apos;s setting.
+            </p>
+          </div>
+          <ThemeToggle />
+        </div>
       </section>
 
       {props.householdInviteCode && (

@@ -76,13 +76,13 @@ function CalendarFilled() {
       <rect x="3.5" y="5.5" width="17" height="15" rx="2.25" />
       <path
         d="M8 3.5v3M16 3.5v3"
-        stroke="var(--bg)"
+        stroke="var(--accent-fg)"
         strokeWidth="2"
         strokeLinecap="round"
       />
-      <circle cx="8" cy="14" r="1.25" fill="var(--bg)" />
-      <circle cx="12" cy="14" r="1.25" fill="var(--bg)" />
-      <circle cx="16" cy="14" r="1.25" fill="var(--bg)" />
+      <circle cx="8" cy="14" r="1.25" fill="var(--accent-fg)" />
+      <circle cx="12" cy="14" r="1.25" fill="var(--accent-fg)" />
+      <circle cx="16" cy="14" r="1.25" fill="var(--accent-fg)" />
     </svg>
   );
 }
@@ -127,7 +127,7 @@ function HistoryFilled() {
       />
       <path
         d="M12 8.5v4l2.75 2.75"
-        stroke="var(--bg)"
+        stroke="var(--accent-fg)"
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"

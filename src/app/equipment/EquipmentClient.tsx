@@ -252,7 +252,7 @@ export default function EquipmentClient({
                   className={
                     "rounded-xl border px-3 py-3 text-sm " +
                     (scope === "household"
-                      ? "border-[var(--accent)] bg-[var(--bg-elev)] text-white"
+                      ? "border-[var(--accent)] bg-[var(--bg-elev)] text-[var(--accent)] font-semibold"
                       : "border-[var(--border)] bg-[var(--bg-elev)] text-[var(--fg-muted)]")
                   }
                 >
@@ -264,7 +264,7 @@ export default function EquipmentClient({
                   className={
                     "rounded-xl border px-3 py-3 text-sm " +
                     (scope === "user"
-                      ? "border-[var(--accent)] bg-[var(--bg-elev)] text-white"
+                      ? "border-[var(--accent)] bg-[var(--bg-elev)] text-[var(--accent)] font-semibold"
                       : "border-[var(--border)] bg-[var(--bg-elev)] text-[var(--fg-muted)]")
                   }
                 >
