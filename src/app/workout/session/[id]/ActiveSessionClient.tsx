@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 import { EXERCISE_BY_ID } from "@/data/exercises";
 import CoachSheet from "@/components/CoachSheet";
 import { drainQueue, enqueueSet, pendingCountFor } from "@/lib/offline-queue";
+import AddExerciseSheet, {
+  type LibraryGroup,
+  type RecentExercise,
+} from "./AddExerciseSheet";
 
 type Prescription = {
   targetLoadKg: number | null;
@@ -13,9 +17,13 @@ type Prescription = {
   holdSeconds: number | null;
 };
 
+type ItemStatus = "PENDING" | "SKIPPED" | "REMOVED";
+
 type Item = {
   programItemId: string;
   exerciseId: string;
+  customName?: string | null;
+  status: ItemStatus;
   sets: number;
   prescription: Prescription;
   previous: {
@@ -26,6 +34,8 @@ type Item = {
   } | null;
   restSeconds: number;
 };
+
+type RemovedItem = { id: string; name: string };
 
 type LoggedSet = {
   id: string;
@@ -55,6 +65,9 @@ export default function ActiveSessionClient({
   completed,
   initialNotes,
   items,
+  removedItems,
+  libraryGroups,
+  recentExercises,
   loggedSets,
   claudeEnabled,
 }: {
@@ -62,6 +75,9 @@ export default function ActiveSessionClient({
   completed: boolean;
   initialNotes: string;
   items: Item[];
+  removedItems: RemovedItem[];
+  libraryGroups: LibraryGroup[];
+  recentExercises: RecentExercise[];
   loggedSets: LoggedSet[];
   claudeEnabled: boolean;
 }) {
@@ -122,6 +138,115 @@ export default function ActiveSessionClient({
   } | null>(null);
   // Map of programItemId -> new exerciseId (locally swapped, this session only)
   const [swappedExerciseIds, setSwappedExerciseIds] = useState<Record<string, string>>({});
+
+  // --- Skip / Remove state ---
+  // Optimistic status overrides keyed by SessionItem.id. We render based on
+  // override if present, else the server-provided status.
+  const [statusOverride, setStatusOverride] = useState<Record<string, ItemStatus>>({});
+  // Names for items the user just removed this render (so the Undo strip can
+  // still label them after the override hides the original card). Cleared on
+  // router.refresh — but we keep our own copy so the strip survives the round-trip.
+  const [removedNameCache, setRemovedNameCache] = useState<Record<string, string>>({});
+
+  function effectiveStatus(item: Item): ItemStatus {
+    return statusOverride[item.programItemId] ?? item.status;
+  }
+
+  async function setItemStatus(itemId: string, next: ItemStatus, prev: ItemStatus, nameForCache?: string) {
+    setError(null);
+    setStatusOverride((s) => ({ ...s, [itemId]: next }));
+    if (next === "REMOVED" && nameForCache) {
+      setRemovedNameCache((c) => ({ ...c, [itemId]: nameForCache }));
+    }
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}/items/${itemId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: next }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "Could not update exercise");
+        // revert
+        setStatusOverride((s) => {
+          const copy = { ...s };
+          copy[itemId] = prev;
+          return copy;
+        });
+        return;
+      }
+      router.refresh();
+    } catch {
+      setError("Network error");
+      setStatusOverride((s) => {
+        const copy = { ...s };
+        copy[itemId] = prev;
+        return copy;
+      });
+    }
+  }
+
+  function loggedSetsForExercise(exerciseId: string): number {
+    return loggedSets.filter((s) => s.exerciseId === exerciseId && !s.skipped).length;
+  }
+
+  function handleSkip(item: Item) {
+    const cur = effectiveStatus(item);
+    const next: ItemStatus = cur === "SKIPPED" ? "PENDING" : "SKIPPED";
+    setItemStatus(item.programItemId, next, cur);
+  }
+
+  function handleRemove(item: Item, displayName: string) {
+    const logged = loggedSetsForExercise(item.exerciseId);
+    if (logged > 0) {
+      const msg =
+        `Remove "${displayName}"? You've logged ${logged} set${logged === 1 ? "" : "s"} on it. ` +
+        `The logged sets will be kept for history.`;
+      if (!confirm(msg)) return;
+    }
+    setItemStatus(item.programItemId, "REMOVED", effectiveStatus(item), displayName);
+  }
+
+  function handleUndoRemove(itemId: string) {
+    const cur = statusOverride[itemId] ?? "REMOVED";
+    setItemStatus(itemId, "PENDING", cur);
+    setRemovedNameCache((c) => {
+      const copy = { ...c };
+      delete copy[itemId];
+      return copy;
+    });
+  }
+
+  // --- Add exercise ---
+  const [addOpen, setAddOpen] = useState(false);
+
+  async function addExerciseCall(
+    body:
+      | { exerciseId: string }
+      | {
+          customName: string;
+          sets: number;
+          repsMin: number;
+          repsMax: number;
+          restSeconds: number;
+        }
+  ): Promise<{ ok: boolean; error?: string }> {
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}/items`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        return { ok: false, error: data.error ?? "Could not add exercise" };
+      }
+      router.refresh();
+      return { ok: true };
+    } catch {
+      return { ok: false, error: "Network error" };
+    }
+  }
 
   function openSwap(programItemId: string) {
     setSwapItemId(programItemId);
@@ -339,33 +464,56 @@ export default function ActiveSessionClient({
       )}
 
       {items.map((it) => {
+        const status = effectiveStatus(it);
+        // Hide REMOVED items from the main list — they live in the Undo strip below.
+        if (status === "REMOVED") return null;
+
         const effectiveExerciseId = swappedExerciseIds[it.programItemId] ?? it.exerciseId;
         const ex = EXERCISE_BY_ID[effectiveExerciseId];
-        if (!ex) return null;
+        // Custom items don't have a library Exercise. We still render them with
+        // the customName but hide library-specific actions like ask/swap.
+        const isCustom = !ex && !!it.customName;
+        if (!ex && !isCustom) return null;
+        const displayName = ex?.name ?? it.customName ?? "Exercise";
         const isIso = it.prescription.holdSeconds != null;
         const repsLabel =
           it.prescription.repsMin === it.prescription.repsMax
             ? `${it.prescription.repsMin}`
             : `${it.prescription.repsMin}–${it.prescription.repsMax}`;
+        const isSkippedItem = status === "SKIPPED";
 
         return (
-          <div key={it.programItemId} className="card">
+          <div
+            key={it.programItemId}
+            className="card"
+            style={isSkippedItem ? { opacity: 0.55 } : undefined}
+          >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="font-semibold">{ex.name}</p>
+                  <p className="font-semibold">{displayName}</p>
+                  {isCustom && (
+                    <span className="text-[10px] uppercase tracking-wide text-[var(--fg-muted)] border border-[var(--border)] rounded-full px-1.5 py-0.5">
+                      custom
+                    </span>
+                  )}
                   {swappedExerciseIds[it.programItemId] && (
                     <span className="text-[10px] uppercase tracking-wide text-[var(--accent)] border border-[var(--accent)] rounded-full px-1.5 py-0.5">
                       swapped
                     </span>
                   )}
-                  {claudeEnabled && !completed && (
+                  {isSkippedItem && (
+                    <span className="text-[10px] uppercase tracking-wide text-[var(--fg-muted)] border border-[var(--border)] rounded-full px-1.5 py-0.5">
+                      skipped
+                    </span>
+                  )}
+                  {!completed && !isSkippedItem && !isCustom && claudeEnabled && (
                     <>
                       <button
                         type="button"
-                        onClick={() => explainExercise(effectiveExerciseId, ex.name)}
+                        onClick={() => explainExercise(effectiveExerciseId, displayName)}
                         className="text-xs text-[var(--accent)] underline"
-                        aria-label={`Explain ${ex.name}`}
+                        aria-label={`Explain ${displayName}`}
                       >
                         ask
                       </button>
@@ -373,10 +521,32 @@ export default function ActiveSessionClient({
                         type="button"
                         onClick={() => openSwap(it.programItemId)}
                         className="text-xs text-[var(--accent)] underline"
-                        aria-label={`Swap ${ex.name}`}
+                        aria-label={`Swap ${displayName}`}
                       >
                         swap
                       </button>
+                    </>
+                  )}
+                  {!completed && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleSkip(it)}
+                        className="text-xs text-[var(--fg-muted)] underline"
+                        aria-label={isSkippedItem ? `Unskip ${displayName}` : `Skip ${displayName}`}
+                      >
+                        {isSkippedItem ? "unskip" : "skip"}
+                      </button>
+                      {!isSkippedItem && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemove(it, displayName)}
+                          className="text-xs text-[var(--fg-muted)] underline"
+                          aria-label={`Remove ${displayName}`}
+                        >
+                          remove
+                        </button>
+                      )}
                     </>
                   )}
                 </div>
@@ -405,6 +575,12 @@ export default function ActiveSessionClient({
               </div>
             </div>
 
+            {isSkippedItem ? (
+              <p className="mt-3 text-xs text-[var(--fg-muted)]">
+                Skipped for today. Tap <span className="font-semibold">unskip</span> to bring it back.
+              </p>
+            ) : (
+            <>
             <div className="mt-3 flex flex-col gap-2">
               {Array.from({ length: it.sets }).map((_, i) => {
                 const setNumber = i + 1;
@@ -505,9 +681,22 @@ export default function ActiveSessionClient({
             <p className="text-xs text-[var(--fg-muted)] mt-3">
               Rest: {it.restSeconds}s
             </p>
+            </>
+            )}
           </div>
         );
       })}
+
+      {!completed && (
+        <button
+          type="button"
+          onClick={() => setAddOpen(true)}
+          className="card text-left text-sm text-[var(--accent)] font-semibold w-full hover:bg-[var(--accent-soft)]"
+          aria-label="Add an exercise to this workout"
+        >
+          + Add exercise
+        </button>
+      )}
 
       <div className="card">
         <label className="block">
@@ -624,6 +813,67 @@ export default function ActiveSessionClient({
         onClose={() => setCoachOpen(false)}
         fetcher={coachFetcher ?? undefined}
       />
+
+      <AddExerciseSheet
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        libraryGroups={libraryGroups}
+        recentExercises={recentExercises}
+        onAdd={addExerciseCall}
+      />
+
+      {(() => {
+        // Surface anything the user has removed (either from this render's
+        // override map or from the server-provided removedItems list).
+        const overrideRemovedIds = Object.entries(statusOverride)
+          .filter(([, s]) => s === "REMOVED")
+          .map(([id]) => id);
+        const merged: RemovedItem[] = [];
+        const seen = new Set<string>();
+        for (const id of overrideRemovedIds) {
+          // Prefer a fresh name from the cache (captured at remove-time), else
+          // try to find the item in the live list, else fall back to the id.
+          const liveName =
+            items.find((it) => it.programItemId === id) &&
+            EXERCISE_BY_ID[items.find((it) => it.programItemId === id)!.exerciseId]?.name;
+          merged.push({ id, name: removedNameCache[id] ?? liveName ?? "Exercise" });
+          seen.add(id);
+        }
+        for (const r of removedItems) {
+          if (seen.has(r.id)) continue;
+          // If the user has just un-removed it (override = PENDING/SKIPPED), skip.
+          if (statusOverride[r.id] && statusOverride[r.id] !== "REMOVED") continue;
+          merged.push(r);
+        }
+        if (merged.length === 0 || completed) return null;
+        return (
+          <div className="card">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs uppercase tracking-wide text-[var(--fg-muted)]">
+                  Removed today
+                </p>
+                <p className="text-sm mt-1">
+                  {merged.map((r) => r.name).join(", ")}
+                </p>
+              </div>
+              <div className="shrink-0 flex flex-col gap-1.5">
+                {merged.map((r) => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => handleUndoRemove(r.id)}
+                    className="text-xs text-[var(--accent)] underline whitespace-nowrap"
+                    aria-label={`Undo remove ${r.name}`}
+                  >
+                    undo {r.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {!completed && (
         <div className="flex flex-col gap-3 pb-4">
