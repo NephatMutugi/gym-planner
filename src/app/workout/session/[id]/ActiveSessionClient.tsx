@@ -133,6 +133,20 @@ export default function ActiveSessionClient({
   // --- Swap state ---
   const [swapOpen, setSwapOpen] = useState(false);
   const [swapItemId, setSwapItemId] = useState<string | null>(null);
+  // Local algorithmic suggestions (fetched on swap-modal open). null = loading.
+  const [localSuggestions, setLocalSuggestions] = useState<
+    Array<{
+      exerciseId: string;
+      name: string;
+      primaryMuscles: string[];
+      reason: string;
+      difficulty: number;
+    }> | null
+  >(null);
+  const [localError, setLocalError] = useState<string | null>(null);
+  // Claude (AI) suggestion path — collapsed by default, only opened when the
+  // user explicitly asks for a custom suggestion.
+  const [claudeExpanded, setClaudeExpanded] = useState(false);
   const [swapReason, setSwapReason] = useState("");
   const [swapBusy, setSwapBusy] = useState(false);
   const [swapError, setSwapError] = useState<string | null>(null);
@@ -329,6 +343,9 @@ export default function ActiveSessionClient({
     setSwapReason("");
     setSwapSuggestion(null);
     setSwapError(null);
+    setLocalSuggestions(null);
+    setLocalError(null);
+    setClaudeExpanded(false);
     setSwapOpen(true);
   }
 
@@ -337,8 +354,45 @@ export default function ActiveSessionClient({
     setSwapItemId(null);
     setSwapSuggestion(null);
     setSwapError(null);
+    setLocalSuggestions(null);
+    setLocalError(null);
+    setClaudeExpanded(false);
   }
 
+  // Fetch algorithmic suggestions whenever the swap modal opens for a new
+  // item. This is the cheap, no-Claude path that handles 99% of cases.
+  useEffect(() => {
+    if (!swapOpen || !swapItemId) return;
+    const item = items.find((i) => i.programItemId === swapItemId);
+    if (!item) return;
+    const exerciseIdToSwap =
+      swappedExerciseIds[item.programItemId] ?? item.exerciseId;
+
+    let cancelled = false;
+    setLocalSuggestions(null);
+    setLocalError(null);
+    (async () => {
+      try {
+        const res = await fetch(`/api/swaps/${exerciseIdToSwap}`);
+        if (cancelled) return;
+        const data = await res.json();
+        if (!res.ok) {
+          setLocalError(data.error ?? "Could not load suggestions");
+          return;
+        }
+        setLocalSuggestions(data.suggestions ?? []);
+      } catch {
+        if (cancelled) return;
+        setLocalError("Network error");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [swapOpen, swapItemId, items, swappedExerciseIds]);
+
+  // Claude (AI) request — only fired when the user explicitly expands the
+  // "Ask Claude" section and submits. The expensive path.
   async function requestSwap() {
     if (!swapItemId) return;
     const item = items.find((i) => i.programItemId === swapItemId);
@@ -364,11 +418,15 @@ export default function ActiveSessionClient({
     setSwapSuggestion(data.suggestion);
   }
 
-  function acceptSwap() {
-    if (!swapItemId || !swapSuggestion) return;
+  // Accepts either a local algorithmic suggestion (just an exerciseId) or
+  // Claude's suggestion (uses the stored swapSuggestion).
+  function acceptSwap(exerciseId?: string) {
+    if (!swapItemId) return;
+    const targetId = exerciseId ?? swapSuggestion?.exerciseId;
+    if (!targetId) return;
     setSwappedExerciseIds((prev) => ({
       ...prev,
-      [swapItemId]: swapSuggestion.exerciseId,
+      [swapItemId]: targetId,
     }));
     closeSwap();
   }
@@ -870,64 +928,126 @@ export default function ActiveSessionClient({
                 ×
               </button>
             </div>
-            {!swapSuggestion && (
-              <>
-                <label className="block">
-                  <span className="block text-sm mb-1.5 text-[var(--fg-muted)]">
-                    Why? <span className="opacity-60">(optional)</span>
-                  </span>
-                  <textarea
-                    rows={3}
-                    value={swapReason}
-                    onChange={(e) => setSwapReason(e.target.value)}
-                    placeholder="e.g. lower back is sore, no time for setup, want something easier"
-                    maxLength={300}
-                  />
-                </label>
-                {swapError && (
-                  <p className="text-sm mt-2" style={{ color: "var(--danger)" }}>
-                    {swapError}
-                  </p>
-                )}
+            {/* Local algorithmic suggestions — instant, no Claude call */}
+            <p className="text-xs uppercase tracking-wide text-[var(--fg-muted)] mb-2">
+              Suggested alternatives
+            </p>
+
+            {localSuggestions === null && !localError && (
+              <p className="text-sm text-[var(--fg-muted)]">Finding alternatives…</p>
+            )}
+
+            {localError && (
+              <p className="text-sm" style={{ color: "var(--danger)" }}>
+                {localError}
+              </p>
+            )}
+
+            {localSuggestions !== null && localSuggestions.length === 0 && (
+              <p className="text-sm text-[var(--fg-muted)]">
+                No close alternatives found with your equipment. Try asking Claude for a custom suggestion below.
+              </p>
+            )}
+
+            {localSuggestions !== null && localSuggestions.length > 0 && (
+              <ul className="flex flex-col gap-2">
+                {localSuggestions.map((s) => (
+                  <li
+                    key={s.exerciseId}
+                    className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3 flex items-start justify-between gap-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-semibold">{s.name}</p>
+                      <p className="text-xs text-[var(--fg-muted)] mt-0.5">
+                        {s.reason}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => acceptSwap(s.exerciseId)}
+                      className="shrink-0 text-xs font-semibold text-[var(--accent-fg)] bg-[var(--accent)] rounded-md px-3 py-1.5"
+                    >
+                      Use
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {/* Claude fallback — collapsible, only fires the AI call when the
+                user expands and explicitly submits */}
+            <div className="mt-5 pt-4 border-t border-[var(--border)]">
+              {!claudeExpanded && !swapSuggestion && (
                 <button
                   type="button"
-                  onClick={requestSwap}
-                  className="btn btn-primary mt-4"
-                  disabled={swapBusy}
+                  onClick={() => setClaudeExpanded(true)}
+                  className="text-sm text-[var(--accent)] underline"
                 >
-                  {swapBusy ? "Asking Claude…" : "Suggest an alternative"}
+                  Ask Claude for a custom suggestion
                 </button>
-              </>
-            )}
-            {swapSuggestion && (
-              <>
-                <p className="text-xs uppercase tracking-wide text-[var(--fg-muted)]">
-                  Suggestion
-                </p>
-                <p className="mt-1 text-lg font-bold">{swapSuggestion.name}</p>
-                <p className="mt-2 text-sm leading-relaxed">
-                  {swapSuggestion.reasoning}
-                </p>
-                <div className="flex gap-3 mt-5">
+              )}
+
+              {claudeExpanded && !swapSuggestion && (
+                <>
+                  <p className="text-xs uppercase tracking-wide text-[var(--fg-muted)] mb-2">
+                    Custom (AI-powered)
+                  </p>
+                  <label className="block">
+                    <span className="block text-sm mb-1.5 text-[var(--fg-muted)]">
+                      What&apos;s the constraint? <span className="opacity-60">(optional)</span>
+                    </span>
+                    <textarea
+                      rows={3}
+                      value={swapReason}
+                      onChange={(e) => setSwapReason(e.target.value)}
+                      placeholder="e.g. lower back is sore, no time for setup, want something easier"
+                      maxLength={300}
+                    />
+                  </label>
+                  {swapError && (
+                    <p className="text-sm mt-2" style={{ color: "var(--danger)" }}>
+                      {swapError}
+                    </p>
+                  )}
                   <button
                     type="button"
-                    onClick={() => {
-                      setSwapSuggestion(null);
-                    }}
-                    className="btn btn-ghost"
+                    onClick={requestSwap}
+                    className="btn btn-primary mt-3"
+                    disabled={swapBusy}
                   >
-                    Try another
+                    {swapBusy ? "Asking Claude…" : "Ask Claude"}
                   </button>
-                  <button
-                    type="button"
-                    onClick={acceptSwap}
-                    className="btn btn-primary"
-                  >
-                    Use this
-                  </button>
-                </div>
-              </>
-            )}
+                </>
+              )}
+
+              {swapSuggestion && (
+                <>
+                  <p className="text-xs uppercase tracking-wide text-[var(--fg-muted)]">
+                    Claude&apos;s suggestion
+                  </p>
+                  <p className="mt-1 text-lg font-bold">{swapSuggestion.name}</p>
+                  <p className="mt-2 text-sm leading-relaxed">
+                    {swapSuggestion.reasoning}
+                  </p>
+                  <div className="flex gap-3 mt-5">
+                    <button
+                      type="button"
+                      onClick={() => setSwapSuggestion(null)}
+                      className="btn btn-ghost"
+                    >
+                      Try another
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => acceptSwap()}
+                      className="btn btn-primary"
+                    >
+                      Use this
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
