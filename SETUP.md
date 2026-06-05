@@ -59,6 +59,18 @@ The app then opens full-screen with the dumbbell icon. It works offline for any 
 
 Until step 3 completes, Resend will reject sends. The console fallback kicks in automatically when `RESEND_API_KEY` is unset, so you can ship and test the flow end-to-end before DNS propagates.
 
+## Exercise form demos — image refresh
+
+Form-demo images come from the public-domain yuhonas/free-exercise-db dataset and are committed to `public/exercise-demos/<exercise_id>/{start,end}.jpg`. The mapping from our exercise IDs to upstream names lives in `src/data/exercise-demos.ts` (`SOURCES` object).
+
+When you add a new exercise to the library or change a `SOURCES` mapping, re-fetch the images:
+
+```bash
+npx tsx scripts/download-demos.ts
+```
+
+The script is idempotent (skips images you already have) and reports any 404s at the end so you know which `SOURCES` entries need a different upstream name. Commit the new files under `public/exercise-demos/` and push — Vercel serves them from the Edge as static assets.
+
 ## What to try
 
 1. Sign up → onboarding → dashboard

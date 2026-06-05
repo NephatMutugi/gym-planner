@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { EXERCISE_BY_ID } from "@/data/exercises";
+import { hasExerciseDemo } from "@/data/exercise-demos";
 import CoachSheet from "@/components/CoachSheet";
 import RestTimer from "@/components/RestTimer";
+import ExerciseDemo from "@/components/ExerciseDemo";
 import { drainQueue, enqueueSet, pendingCountFor } from "@/lib/offline-queue";
 import AddExerciseSheet, {
   type LibraryGroup,
@@ -274,6 +276,13 @@ export default function ActiveSessionClient({
       setNoteBusy(false);
     }
   }
+
+  // --- Exercise demo modal ---
+  // Tracks { exerciseId, exerciseName } for the currently-open demo, or null.
+  const [demoFor, setDemoFor] = useState<{
+    exerciseId: string;
+    exerciseName: string;
+  } | null>(null);
 
   // --- Rest timer ---
   // restartKey is bumped each time the user logs a non-skipped set, which
@@ -603,6 +612,21 @@ export default function ActiveSessionClient({
                       </button>
                     </>
                   )}
+                  {!isCustom && hasExerciseDemo(effectiveExerciseId) && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDemoFor({
+                          exerciseId: effectiveExerciseId,
+                          exerciseName: displayName,
+                        })
+                      }
+                      className="text-xs text-[var(--accent)] underline"
+                      aria-label={`Show form demo for ${displayName}`}
+                    >
+                      demo
+                    </button>
+                  )}
                   {!completed && (
                     <>
                       <button
@@ -919,6 +943,13 @@ export default function ActiveSessionClient({
         duration={restTimer?.duration ?? null}
         restartKey={restTimer?.restartKey ?? null}
         enabled={!completed}
+      />
+
+      <ExerciseDemo
+        open={!!demoFor}
+        exerciseId={demoFor?.exerciseId ?? ""}
+        exerciseName={demoFor?.exerciseName ?? ""}
+        onClose={() => setDemoFor(null)}
       />
 
       <AddExerciseSheet

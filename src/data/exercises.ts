@@ -73,6 +73,9 @@ export interface Exercise {
   tags?: ExerciseTag[];
 }
 
+// Form-demo media for each exercise is centralized in src/data/exercise-demos.ts
+// so we don't have to inline image URLs on every Exercise object.
+
 export const PATTERN_LABELS: Record<Pattern, string> = {
   horizontal_push: "Horizontal push",
   vertical_push: "Vertical push",

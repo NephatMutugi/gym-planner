@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { EXERCISE_BY_ID, MUSCLE_LABELS, type Muscle } from "@/data/exercises";
+import ExerciseDemoButton from "@/components/ExerciseDemoButton";
 
 type Item = {
   order: number;
@@ -193,7 +194,12 @@ export default function WorkoutClient({
             return (
               <li key={it.order} className="card">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
+                  <ExerciseDemoButton
+                    exerciseId={ex.id}
+                    exerciseName={ex.name}
+                    variant="thumbnail"
+                  />
+                  <div className="min-w-0 flex-1">
                     <p className="font-semibold">{ex.name}</p>
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
                       {ex.primaryMuscles.slice(0, 3).map((m) => (
