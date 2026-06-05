@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { EXERCISE_BY_ID } from "@/data/exercises";
 import CoachSheet from "@/components/CoachSheet";
+import RestTimer from "@/components/RestTimer";
 import { drainQueue, enqueueSet, pendingCountFor } from "@/lib/offline-queue";
 import AddExerciseSheet, {
   type LibraryGroup,
@@ -68,6 +69,7 @@ export default function ActiveSessionClient({
   removedItems,
   libraryGroups,
   recentExercises,
+  exerciseNotes,
   loggedSets,
   claudeEnabled,
 }: {
@@ -78,6 +80,7 @@ export default function ActiveSessionClient({
   removedItems: RemovedItem[];
   libraryGroups: LibraryGroup[];
   recentExercises: RecentExercise[];
+  exerciseNotes: Record<string, string>;
   loggedSets: LoggedSet[];
   claudeEnabled: boolean;
 }) {
@@ -216,6 +219,70 @@ export default function ActiveSessionClient({
       return copy;
     });
   }
+
+  // --- Per-exercise persistent notes ---
+  // Local overrides keyed by library exerciseId. Mirrors the swap/status
+  // override pattern — render the override if present, fall back to the
+  // server-provided dict.
+  const [noteOverride, setNoteOverride] = useState<Record<string, string>>({});
+  const [noteEditorFor, setNoteEditorFor] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [noteBusy, setNoteBusy] = useState(false);
+
+  function getNote(exerciseId: string): string {
+    if (Object.prototype.hasOwnProperty.call(noteOverride, exerciseId)) {
+      return noteOverride[exerciseId];
+    }
+    return exerciseNotes[exerciseId] ?? "";
+  }
+
+  function openNoteEditor(exerciseId: string) {
+    setNoteDraft(getNote(exerciseId));
+    setNoteEditorFor(exerciseId);
+  }
+
+  function closeNoteEditor() {
+    setNoteEditorFor(null);
+    setNoteDraft("");
+  }
+
+  async function saveNote() {
+    if (!noteEditorFor) return;
+    const exerciseId = noteEditorFor;
+    const next = noteDraft.trim();
+    const prev = getNote(exerciseId);
+    setNoteBusy(true);
+    setNoteOverride((m) => ({ ...m, [exerciseId]: next }));
+    try {
+      const res = await fetch(`/api/exercises/${exerciseId}/note`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body: next }),
+      });
+      if (!res.ok) {
+        // revert
+        setNoteOverride((m) => ({ ...m, [exerciseId]: prev }));
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "Could not save note");
+        return;
+      }
+      closeNoteEditor();
+    } catch {
+      setNoteOverride((m) => ({ ...m, [exerciseId]: prev }));
+      setError("Network error");
+    } finally {
+      setNoteBusy(false);
+    }
+  }
+
+  // --- Rest timer ---
+  // restartKey is bumped each time the user logs a non-skipped set, which
+  // triggers the timer to (re)start from the prescription's restSeconds.
+  // Skipped sets do not start the timer (rest only matters between real sets).
+  const [restTimer, setRestTimer] = useState<{
+    duration: number;
+    restartKey: string;
+  } | null>(null);
 
   // --- Add exercise ---
   const [addOpen, setAddOpen] = useState(false);
@@ -411,6 +478,15 @@ export default function ActiveSessionClient({
       "status",
       options.skipped ? "skipped" : "logged"
     );
+
+    // Start (or restart) the rest timer on a real logged set. Skipped sets
+    // don't trigger rest — there's nothing to recover from.
+    if (!options.skipped && item.restSeconds > 0) {
+      setRestTimer({
+        duration: item.restSeconds,
+        restartKey: `${effectiveExerciseId}-${setNumber}-${Date.now()}`,
+      });
+    }
   }
 
   async function completeSession() {
@@ -560,6 +636,31 @@ export default function ActiveSessionClient({
                       ? `${it.previous.holdSeconds}s`
                       : it.previous.reps ?? ""}
                   </p>
+                )}
+                {!isCustom && getNote(effectiveExerciseId) && (
+                  <p className="text-xs text-[var(--fg-muted)] mt-1 italic">
+                    📝 {getNote(effectiveExerciseId)}{" "}
+                    {!completed && (
+                      <button
+                        type="button"
+                        onClick={() => openNoteEditor(effectiveExerciseId)}
+                        className="not-italic underline text-[var(--accent)] ml-1"
+                        aria-label={`Edit note for ${displayName}`}
+                      >
+                        edit
+                      </button>
+                    )}
+                  </p>
+                )}
+                {!isCustom && !getNote(effectiveExerciseId) && !completed && (
+                  <button
+                    type="button"
+                    onClick={() => openNoteEditor(effectiveExerciseId)}
+                    className="text-xs text-[var(--fg-muted)] underline mt-1"
+                    aria-label={`Add note for ${displayName}`}
+                  >
+                    + note
+                  </button>
                 )}
               </div>
               <div className="shrink-0 text-right">
@@ -814,6 +915,12 @@ export default function ActiveSessionClient({
         fetcher={coachFetcher ?? undefined}
       />
 
+      <RestTimer
+        duration={restTimer?.duration ?? null}
+        restartKey={restTimer?.restartKey ?? null}
+        enabled={!completed}
+      />
+
       <AddExerciseSheet
         open={addOpen}
         onClose={() => setAddOpen(false)}
@@ -821,6 +928,67 @@ export default function ActiveSessionClient({
         recentExercises={recentExercises}
         onAdd={addExerciseCall}
       />
+
+      {/* Per-exercise note editor */}
+      {noteEditorFor && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => !noteBusy && closeNoteEditor()}
+        >
+          <div className="absolute inset-0 bg-black/60" />
+          <div
+            className="relative w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl border border-[var(--border)] bg-[var(--bg-elev)] p-5 m-0 sm:m-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <h2 className="text-lg font-bold">
+                Note: {EXERCISE_BY_ID[noteEditorFor]?.name ?? "Exercise"}
+              </h2>
+              <button
+                type="button"
+                onClick={closeNoteEditor}
+                disabled={noteBusy}
+                className="text-[var(--fg-muted)] text-xl leading-none px-2"
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            <p className="text-xs text-[var(--fg-muted)] mb-2">
+              Shown the next time this exercise appears in any workout. Leave empty to remove.
+            </p>
+            <textarea
+              value={noteDraft}
+              onChange={(e) => setNoteDraft(e.target.value)}
+              rows={4}
+              maxLength={500}
+              placeholder="e.g. knee twinged on rep 8, try 12kg next time"
+              autoFocus
+              disabled={noteBusy}
+            />
+            <div className="flex gap-3 mt-4">
+              <button
+                type="button"
+                onClick={closeNoteEditor}
+                className="btn btn-ghost"
+                disabled={noteBusy}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={saveNote}
+                className="btn btn-primary"
+                disabled={noteBusy}
+              >
+                {noteBusy ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {(() => {
         // Surface anything the user has removed (either from this render's

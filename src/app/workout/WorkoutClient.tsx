@@ -100,7 +100,7 @@ export default function WorkoutClient({
           onClick={generate}
           disabled={busy}
         >
-          {busy ? "Generating…" : "Generate my program"}
+          {busy ? "Generating…" : "Generate program"}
         </button>
       </div>
     );

@@ -68,6 +68,10 @@ model User {
   emailVerified DateTime?
   name          String?
   passwordHash  String?
+  // Bumped whenever the user changes their password (including via the reset
+  // flow). JWTs issued before this moment are treated as invalid by the
+  // session callback — effectively logging out other devices on reset.
+  passwordChangedAt DateTime?
   image         String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -93,6 +97,47 @@ model User {
   privateEquipment Equipment[] @relation("UserEquipment")
   programs         Program[]
   workoutSessions  WorkoutSession[]
+  passwordResetTokens PasswordResetToken[]
+  exerciseNotes    ExerciseNote[]
+}
+
+// Per-user, per-exercise persistent notes. Distinct from the per-session
+// `notes` on WorkoutSession (which describes how a whole workout went) — these
+// stick to an exercise across sessions, so "knee twinged on rep 8" surfaces
+// the next time that exercise is on the menu.
+model ExerciseNote {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exerciseId String   // Matches Exercise.id in src/data/exercises.ts
+  body       String   // The note content (trimmed; max enforced in API)
+  updatedAt  DateTime @updatedAt
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, exerciseId])
+  @@index([userId])
+}
+
+// Single-use, short-lived tokens for the "forgot password" flow.
+//
+// Security model:
+//   - Plaintext token only ever exists in the email body and the URL the user
+//     clicks. We store a SHA-256 hash so a DB leak doesn't compromise active
+//     links.
+//   - usedAt enforces single-use.
+//   - expiresAt enforces a short TTL (one hour).
+//   - tokenHash is unique so a duplicate generation can't shadow another.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model Equipment {

@@ -52,6 +52,9 @@ export default function OnboardingPage() {
 
   // Household step (optional, after profile saved)
   const [hhMode, setHhMode] = useState<"choose" | "create" | "join" | "done">("choose");
+  // Which path completed — "created" shows the invite code to share, "joined"
+  // shows a simple confirmation. Defaults to null until done.
+  const [hhDoneVia, setHhDoneVia] = useState<"created" | "joined" | null>(null);
   const [hhName, setHhName] = useState("");
   const [hhCode, setHhCode] = useState("");
 
@@ -199,6 +202,7 @@ export default function OnboardingPage() {
     }
     const data = await res.json();
     setHhCode(data.household.inviteCode);
+    setHhDoneVia("created");
     setHhMode("done");
   }
 
@@ -221,6 +225,7 @@ export default function OnboardingPage() {
       setError(data.error ?? "Could not join household");
       return;
     }
+    setHhDoneVia("joined");
     setHhMode("done");
   }
 
@@ -482,7 +487,7 @@ export default function OnboardingPage() {
             <div>
               <label className="block">
                 <span className="block text-sm mb-1.5 text-[var(--fg-muted)]">
-                  Postpartum recovery? <span className="opacity-60">(optional)</span>
+                  Postpartum recovery <span className="opacity-60">(optional)</span>
                 </span>
                 <input
                   type="number"
@@ -494,7 +499,7 @@ export default function OnboardingPage() {
                   placeholder="Weeks since giving birth"
                 />
                 <span className="block text-xs text-[var(--fg-muted)] mt-1.5">
-                  Optional. If set, we&apos;ll skip high-impact and heavy-bracing exercises and lean into mobility, glute activation, and breathing-based core. Always clear return-to-exercise with your healthcare provider.
+                  If set, we&apos;ll skip high-impact and heavy-bracing exercises and lean into mobility, glute activation, and breathing-based core. Always clear return-to-exercise with your healthcare provider.
                 </span>
               </label>
             </div>
@@ -600,11 +605,11 @@ export default function OnboardingPage() {
             {hhMode === "done" && (
               <div className="card">
                 <p className="text-sm text-[var(--fg-muted)]">
-                  {hhCode
+                  {hhDoneVia === "created"
                     ? "Household created. Share this invite code with your partner so they can join."
-                    : "You're in. You'll share equipment with your household."}
+                    : "You’re in. You’ll share equipment with your household."}
                 </p>
-                {hhCode && (
+                {hhDoneVia === "created" && (
                   <div className="mt-3 text-2xl font-mono tracking-widest text-center py-3 border border-[var(--border)] rounded-xl">
                     {hhCode}
                   </div>

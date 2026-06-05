@@ -77,12 +77,22 @@ interface PrescriptionShape {
   isoHoldSec: number; // for plank, side plank etc.
 }
 
+// Rest periods are calibrated to current evidence (Schoenfeld et al. 2016,
+// de Salles et al. Sports Med review, NSCA Essentials 4th ed.):
+//   - Strength (1-5 reps): main compound rest ≥3 min for full PCr recovery.
+//   - Hypertrophy (6-12 reps): 2-3 min on compounds preserves volume on later
+//     sets, which is the primary growth driver. The older "60-90s for
+//     hypertrophy" rec was overturned by Schoenfeld 2016 (3 min > 1 min for
+//     both strength and growth, sets/reps equated).
+//   - Isolation / accessory: 60-90s is sufficient.
+//   - Metabolic / endurance: 30-60s maintains the elevated heart rate and
+//     lactate accumulation that defines the stimulus.
 const PRESCRIPTION_BY_GOAL: Record<Goal, PrescriptionShape> = {
   strength: {
     mainSets: 4,
     mainRepsMin: 4,
     mainRepsMax: 6,
-    mainRestSec: 150,
+    mainRestSec: 180, // 3 min — strength minimum for full PCr recovery
     accessorySets: 3,
     accessoryRepsMin: 6,
     accessoryRepsMax: 10,
@@ -91,28 +101,28 @@ const PRESCRIPTION_BY_GOAL: Record<Goal, PrescriptionShape> = {
     finisherRepsMin: 8,
     finisherRepsMax: 12,
     finisherRestSec: 60,
-    isoHoldSec: 30,
+    isoHoldSec: 45,
   },
   muscle_gain: {
     mainSets: 4,
     mainRepsMin: 8,
     mainRepsMax: 12,
-    mainRestSec: 90,
+    mainRestSec: 150, // 2:30 — Schoenfeld 2016 floor for compound hypertrophy
     accessorySets: 3,
     accessoryRepsMin: 10,
     accessoryRepsMax: 15,
-    accessoryRestSec: 60,
+    accessoryRestSec: 75,
     finisherSets: 3,
     finisherRepsMin: 12,
     finisherRepsMax: 20,
     finisherRestSec: 45,
-    isoHoldSec: 30,
+    isoHoldSec: 45,
   },
   general_fitness: {
     mainSets: 3,
     mainRepsMin: 8,
     mainRepsMax: 12,
-    mainRestSec: 75,
+    mainRestSec: 90, // 1:30 — time-budget compromise; still enough on submax loads
     accessorySets: 3,
     accessoryRepsMin: 10,
     accessoryRepsMax: 15,
@@ -121,7 +131,7 @@ const PRESCRIPTION_BY_GOAL: Record<Goal, PrescriptionShape> = {
     finisherRepsMin: 12,
     finisherRepsMax: 20,
     finisherRestSec: 45,
-    isoHoldSec: 30,
+    isoHoldSec: 45,
   },
   fat_loss: {
     mainSets: 3,
@@ -202,11 +212,32 @@ function adjustForExperience(shape: PrescriptionShape, xp: Experience): Prescrip
   return out;
 }
 
+// Postpartum rest buffer. Adds +30s to main and accessory rest periods on
+// loaded work for the first ~4 months postpartum. Rationale: longer rest
+// between loaded sets reduces cumulative intra-abdominal pressure and gives
+// pelvic-floor + deep core time to re-engage between sets (Bø et al. 2017
+// IOC consensus; clinical PT practice). Finisher and iso rest are left
+// alone — they're already short and not load-dominant.
+function adjustForPostpartum(
+  shape: PrescriptionShape,
+  postpartumWeeks: number | null | undefined
+): PrescriptionShape {
+  if (postpartumWeeks == null || postpartumWeeks >= 16) return shape;
+  return {
+    ...shape,
+    mainRestSec: shape.mainRestSec + 30,
+    accessoryRestSec: shape.accessoryRestSec + 30,
+  };
+}
+
 // ---- Session-length budget ----
-// Rough heuristic: ~7 minutes per exercise including rest and warm-up.
+// Rough heuristic: ~8 minutes per exercise including rest and inter-set work.
+// Bumped from 7 → 8 alongside the rest-period retune so a 45-min target maps
+// to ~5 exercises (was ~5–6). Empirically: 3 sets × 90s work + 3 × 120s rest +
+// transition + warm-up ≈ 7.5 min, rounded up.
 function exerciseBudget(sessionMinutes: number): number {
   const warmup = 5;
-  const perExercise = 7;
+  const perExercise = 8;
   return Math.max(3, Math.min(8, Math.floor((sessionMinutes - warmup) / perExercise)));
 }
 
@@ -390,7 +421,10 @@ export function generateProgram(
   const goals = (profile.goals.length > 0 ? profile.goals : ["general_fitness"]) as Goal[];
   const template = templateForDays(profile.daysPerWeek);
   const available = filterExercisesForProfile(availableExercises(inventory), profile);
-  const shape = adjustForExperience(combinePrescriptions(goals), profile.experience);
+  const shape = adjustForPostpartum(
+    adjustForExperience(combinePrescriptions(goals), profile.experience),
+    profile.postpartumWeeks
+  );
   const budget = exerciseBudget(profile.sessionMinutes);
 
   const days: GeneratedDay[] = template.days.map((tplDay) => {

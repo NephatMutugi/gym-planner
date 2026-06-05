@@ -210,7 +210,7 @@ export default function EquipmentClient({
                 placeholder="e.g. 2, 5, 10"
               />
               <span className="block text-xs text-[var(--fg-muted)] mt-1.5">
-                Comma- or space-separated. Each number is one available weight.
+                Separate with commas or spaces. Each number is one available weight.
               </span>
             </label>
           )}

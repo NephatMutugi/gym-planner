@@ -26,7 +26,7 @@ export default function SignupPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "Sign up failed");
+        setError(data.error ?? "Could not create account");
         setLoading(false);
         return;
       }
@@ -36,14 +36,14 @@ export default function SignupPage() {
         redirect: false,
       });
       if (signInRes?.error) {
-        setError("Sign up succeeded but auto-login failed. Please log in.");
+        setError("Account created — please log in to continue.");
         router.push("/login");
         return;
       }
       router.push("/onboarding");
     } catch (err) {
       console.error(err);
-      setError("Something went wrong");
+      setError("Network error. Please try again.");
       setLoading(false);
     }
   }

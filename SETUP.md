@@ -40,6 +40,24 @@ The app then opens full-screen with the dumbbell icon. It works offline for any 
 
 - `NEXTAUTH_SECRET` — replace before deploying. `openssl rand -base64 32`
 - `ANTHROPIC_API_KEY` — required for Claude coaching (ask / swap / weekly check-in). Leave empty to use the app without Claude.
+- `RESEND_API_KEY` + `RESEND_FROM_EMAIL` — optional. With them, the "Forgot password" flow sends real email via Resend. Without them, the reset URL is logged to the server console instead (useful for dev / before DNS propagates).
+- `APP_URL` — optional but recommended in production. Used to build absolute URLs in password-reset emails. e.g. `https://gym.nephatmuchiri.com`.
+
+## Password reset — Resend setup
+
+1. Sign up at https://resend.com.
+2. Add a sender domain (e.g. the apex of your app domain). Resend will ask you to publish a small set of DNS records — usually a TXT for verification plus DKIM CNAMEs.
+3. Wait for the domain to verify (minutes).
+4. Generate an API key in the Resend dashboard.
+5. Set in Vercel envs (and your local `.env`):
+   ```
+   RESEND_API_KEY=re_xxx
+   RESEND_FROM_EMAIL="Gym Planner <noreply@yourdomain.com>"
+   APP_URL=https://gym.yourdomain.com
+   ```
+6. Test by visiting `/forgot-password`, submitting your email, and clicking the link in the resulting email.
+
+Until step 3 completes, Resend will reject sends. The console fallback kicks in automatically when `RESEND_API_KEY` is unset, so you can ship and test the flow end-to-end before DNS propagates.
 
 ## What to try
 

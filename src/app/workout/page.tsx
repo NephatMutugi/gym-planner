@@ -95,7 +95,7 @@ export default async function WorkoutPage() {
         </Link>
         <h1 className="text-2xl md:text-3xl font-bold mt-1">Workout</h1>
         <p className="text-sm text-[var(--fg-muted)] mt-1">
-          {program.split.replace(/_/g, " ")} · {program.daysPerWeek}×/week
+          {formatSplit(program.split)} · {program.daysPerWeek}×/week
         </p>
       </header>
 
@@ -130,6 +130,12 @@ export default async function WorkoutPage() {
       />
     </main>
   );
+}
+
+// "full_body_3x" → "Full body 3x"
+function formatSplit(raw: string): string {
+  const spaced = raw.replace(/_/g, " ");
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
 // Map current weekday to a 0-based day index within the program's rotation.

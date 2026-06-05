@@ -49,6 +49,15 @@ export default async function DashboardPage() {
     },
   });
 
+  // Has an in-progress workout session? Drives the "Resume workout" cue on the
+  // dashboard's Workout card.
+  const activeSessionCount = await prisma.workoutSession.count({
+    where: {
+      userId: session.user.id,
+      completedAt: null,
+    },
+  });
+
   return (
     <DashboardClient
       name={user.name ?? "there"}
@@ -69,9 +78,17 @@ export default async function DashboardPage() {
       equipmentCount={equipmentRows.length}
       exerciseCount={exerciseCount}
       hasProgram={!!program}
-      programSplit={program ? program.split.replace(/_/g, " ") : null}
+      hasActiveSession={activeSessionCount > 0}
+      programSplit={program ? formatSplit(program.split) : null}
       programDayCount={program?.days.length ?? 0}
       claudeEnabled={isClaudeConfigured()}
     />
   );
+}
+
+// "full_body_3x" → "Full body 3x". Keeps shorthand like "3x" lowercase
+// because uppercasing every word would yield "Full Body 3X" — yuck.
+function formatSplit(raw: string): string {
+  const spaced = raw.replace(/_/g, " ");
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }

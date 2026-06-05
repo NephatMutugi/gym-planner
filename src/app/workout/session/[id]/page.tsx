@@ -210,6 +210,31 @@ export default async function ActiveSessionPage({
     })
   );
 
+  // Persistent per-exercise notes. We pre-fetch all notes touching the
+  // exercises in this session so the client can render them inline without
+  // a roundtrip per card.
+  const sessionExerciseIds = Array.from(
+    new Set(
+      allItems
+        .map((it: SessionItemRow) => it.exerciseId)
+        .filter((id: string | null): id is string => !!id)
+    )
+  );
+  const noteRows =
+    sessionExerciseIds.length > 0
+      ? await prisma.exerciseNote.findMany({
+          where: {
+            userId: session.user.id,
+            exerciseId: { in: sessionExerciseIds },
+          },
+          select: { exerciseId: true, body: true },
+        })
+      : [];
+  const exerciseNotes: Record<string, string> = {};
+  for (const n of noteRows as Array<{ exerciseId: string; body: string }>) {
+    exerciseNotes[n.exerciseId] = n.body;
+  }
+
   // Build library data for the Add-exercise sheet (server-side so the client
   // doesn't ship the whole exercise table).
   const grouped = exercisesByPattern(inventory);
@@ -270,6 +295,7 @@ export default async function ActiveSessionPage({
         removedItems={removedItems}
         libraryGroups={libraryGroups}
         recentExercises={recentExercises}
+        exerciseNotes={exerciseNotes}
         loggedSets={ws.sets.map((s: SetRow) => ({
           id: s.id,
           exerciseId: s.exerciseId,

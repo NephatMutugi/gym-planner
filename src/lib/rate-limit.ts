@@ -62,3 +62,19 @@ export const WEEKLY_CHECKIN_LIMIT: LimiterConfig = {
   capacity: 3,
   refillPerSecond: 1 / 60,
 };
+
+// Password reset request — generous burst of 5, then 1 every 12 minutes
+// (i.e. 5 per hour sustained). Applied separately by IP and by email so
+// neither key can be used to enumerate the other.
+export const PASSWORD_RESET_REQUEST_LIMIT: LimiterConfig = {
+  capacity: 5,
+  refillPerSecond: 1 / 720,
+};
+
+// Password reset complete — 10-token burst, 1 every 6 min (10/hour). Higher
+// than request because a user with a valid token may legitimately retry on
+// typos.
+export const PASSWORD_RESET_COMPLETE_LIMIT: LimiterConfig = {
+  capacity: 10,
+  refillPerSecond: 1 / 360,
+};

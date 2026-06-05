@@ -141,16 +141,24 @@ export default function LoginPage() {
           </div>
         </label>
 
-        <label className="flex items-center gap-2 text-sm text-[var(--fg-muted)] select-none cursor-pointer">
-          <input
-            type="checkbox"
-            checked={remember}
-            onChange={(e) => setRemember(e.target.checked)}
-            className="w-4 h-4"
-            style={{ accentColor: "var(--accent)" }}
-          />
-          <span>Remember me</span>
-        </label>
+        <div className="flex items-center justify-between gap-3">
+          <label className="flex items-center gap-2 text-sm text-[var(--fg-muted)] select-none cursor-pointer">
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+              className="w-4 h-4"
+              style={{ accentColor: "var(--accent)" }}
+            />
+            <span>Remember me</span>
+          </label>
+          <Link
+            href="/forgot-password"
+            className="text-sm text-[var(--accent)] underline"
+          >
+            Forgot password?
+          </Link>
+        </div>
 
         {error && (
           <p className="text-sm" style={{ color: "var(--danger)" }}>
