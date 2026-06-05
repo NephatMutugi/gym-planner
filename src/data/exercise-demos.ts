@@ -99,6 +99,15 @@ const SOURCES: Record<string, string> = {
   db_hammer_curl: "Hammer_Curls",
   db_skullcrusher: "Lying_Dumbbell_Tricep_Extension", // singular "Tricep" + reversed word order
   db_overhead_tricep_extension: "Seated_Triceps_Press",
+  db_tricep_kickback: "Tricep_Dumbbell_Kickback",
+  // --- Calves ---
+  db_calf_raise: "Standing_Dumbbell_Calf_Raise",
+  // --- Traps / rear delts ---
+  db_shrug: "Dumbbell_Shrug",
+  band_pull_apart: "Band_Pull_Apart",
+  db_rear_delt_raise: "Bent_Over_Dumbbell_Rear_Delt_Raise_With_Head_On_Bench",
+  // --- Core (advanced) ---
+  hanging_leg_raise: "Hanging_Leg_Raise",
   // --- Conditioning / full-body ---
   kb_clean_and_press: "Two-Arm_Kettlebell_Clean", // press portion is similar
   mountain_climber: "Mountain_Climbers",

@@ -24,6 +24,7 @@ export type Pattern =
   | "carry"
   | "core"
   | "rotation"
+  | "calf"
   | "mobility"
   | "conditioning";
 
@@ -87,6 +88,7 @@ export const PATTERN_LABELS: Record<Pattern, string> = {
   carry: "Carry",
   core: "Core",
   rotation: "Rotation",
+  calf: "Calves",
   mobility: "Mobility",
   conditioning: "Conditioning",
 };
@@ -977,6 +979,105 @@ export const EXERCISES: Exercise[] = [
     cues: [
       "One DB held overhead with both hands",
       "Elbows in, lower behind the head with control",
+    ],
+  },
+
+  // ---------- Calves ----------
+  {
+    id: "db_calf_raise",
+    name: "Dumbbell calf raise",
+    equipment: ["dumbbell"],
+    pattern: "calf",
+    primaryMuscles: ["calves"],
+    difficulty: 1,
+    unilateral: false,
+    loadType: "loaded",
+    cues: [
+      "DBs by sides, balls of feet on a step or floor",
+      "Drive up onto toes, squeeze the calves at the top",
+      "Lower slowly below neutral for a stretch",
+    ],
+  },
+
+  // ---------- Traps / rear delts ----------
+  {
+    id: "db_shrug",
+    name: "Dumbbell shrug",
+    equipment: ["dumbbell"],
+    pattern: "horizontal_pull",
+    primaryMuscles: ["traps"],
+    difficulty: 1,
+    unilateral: false,
+    loadType: "loaded",
+    cues: [
+      "DBs at sides, arms straight",
+      "Shrug shoulders straight up — don't roll",
+      "Pause at the top; control the descent",
+    ],
+  },
+  {
+    id: "band_pull_apart",
+    name: "Band pull-apart",
+    equipment: ["band"],
+    pattern: "horizontal_pull",
+    primaryMuscles: ["shoulders", "back", "traps"],
+    difficulty: 1,
+    unilateral: false,
+    loadType: "loaded",
+    cues: [
+      "Band at chest height, arms straight",
+      "Pull band apart by squeezing the shoulder blades together",
+      "Slow return — don't let the band snap you back",
+    ],
+  },
+  {
+    id: "db_rear_delt_raise",
+    name: "Dumbbell rear delt raise",
+    equipment: ["dumbbell", "bench"],
+    pattern: "horizontal_pull",
+    primaryMuscles: ["shoulders", "back"],
+    difficulty: 2,
+    unilateral: false,
+    loadType: "loaded",
+    cues: [
+      "Chest on an incline bench or hinged at hips, DBs hang down",
+      "Raise DBs out to the sides leading with the elbows",
+      "Squeeze the rear delts at the top, slow return",
+    ],
+  },
+
+  // ---------- Triceps (accessory) ----------
+  {
+    id: "db_tricep_kickback",
+    name: "Dumbbell tricep kickback",
+    equipment: ["dumbbell"],
+    pattern: "horizontal_push",
+    primaryMuscles: ["triceps"],
+    difficulty: 1,
+    unilateral: true,
+    loadType: "loaded",
+    cues: [
+      "Hinge at hips, upper arm parallel to torso",
+      "Extend the forearm back, squeeze the tricep",
+      "Don't swing the upper arm — keep the elbow pinned",
+    ],
+  },
+
+  // ---------- Core (advanced) ----------
+  {
+    id: "hanging_leg_raise",
+    name: "Hanging leg raise",
+    equipment: ["pullup_bar"],
+    pattern: "core",
+    primaryMuscles: ["abs", "hip_flexors"],
+    difficulty: 3,
+    unilateral: false,
+    loadType: "bodyweight",
+    tags: ["deep_core_flexion"],
+    cues: [
+      "Dead hang from the bar, shoulders engaged",
+      "Posterior pelvic tilt as you raise the legs",
+      "Avoid swinging — control both directions",
     ],
   },
 
