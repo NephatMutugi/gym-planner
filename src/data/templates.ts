@@ -74,6 +74,23 @@ const MOBILITY: Slot = {
   patterns: ["mobility"],
   intensity: "finisher",
 };
+// Direct calf work as a session finisher. Appended after compound slots so
+// it only fills on longer sessions (the exercise budget trims late slots
+// first when time is tight).
+const CALF: Slot = {
+  patterns: ["calf"],
+  intensity: "finisher",
+};
+// Isolation-biased horizontal pull — picks shrugs / rear-delt raises /
+// band pull-aparts over rows once the main row slot is already filled.
+// The `used` set in the picker prevents re-selecting the row that won the
+// main slot, and `prefer: "isolation"` further nudges the picker toward
+// shrug + rear-delt-raise + band-pull-apart over any other compound row.
+const ISO_PULL: Slot = {
+  patterns: ["horizontal_pull"],
+  intensity: "accessory",
+  prefer: "isolation",
+};
 
 // --- Full body templates ---
 
@@ -86,6 +103,7 @@ const FULL_BODY_A: TemplateDay = {
     HINGE,
     CORE,
     V_PUSH,
+    CALF,
     CARRY,
     CONDITIONING,
   ],
@@ -100,6 +118,7 @@ const FULL_BODY_B: TemplateDay = {
     LUNGE,
     ROTATION_CORE,
     H_PUSH,
+    CALF,
     CARRY,
     CONDITIONING,
   ],
@@ -114,6 +133,8 @@ const FULL_BODY_C: TemplateDay = {
     HINGE,
     CORE,
     H_PUSH,
+    ISO_PULL,
+    CALF,
     CONDITIONING,
   ],
 };
@@ -129,6 +150,7 @@ const UPPER_A: TemplateDay = {
     V_PULL,
     ANY_PUSH,
     ANY_PULL,
+    ISO_PULL,
     CORE,
   ],
 };
@@ -141,6 +163,7 @@ const UPPER_B: TemplateDay = {
     H_PUSH,
     H_PULL,
     ANY_PUSH,
+    ISO_PULL,
     ROTATION_CORE,
   ],
 };
@@ -152,6 +175,7 @@ const LOWER_A: TemplateDay = {
     HINGE,
     LUNGE,
     CORE,
+    CALF,
     CARRY,
     CONDITIONING,
   ],
@@ -164,6 +188,7 @@ const LOWER_B: TemplateDay = {
     SQUAT,
     LUNGE,
     ROTATION_CORE,
+    CALF,
     CARRY,
   ],
 };
@@ -188,6 +213,7 @@ const PULL_DAY: TemplateDay = {
     V_PULL,
     H_PULL,
     V_PULL,
+    ISO_PULL,
     CORE,
   ],
 };
@@ -198,6 +224,7 @@ const LEGS_DAY: TemplateDay = {
     SQUAT,
     HINGE,
     LUNGE,
+    CALF,
     CORE,
     CARRY,
   ],

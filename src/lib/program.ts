@@ -373,10 +373,15 @@ function estimateStartingLoad(
 // ---- Exercise selection per day ----
 
 function isIsolation(ex: Exercise): boolean {
-  // Heuristic: a single small muscle group as primary = isolation
+  // Heuristic: a single small muscle group as primary = isolation.
+  // Includes biceps, triceps, calves, traps — all of which have only
+  // direct-isolation movements in the library, so any exercise that
+  // names one of these as the sole primary is by definition isolation.
   if (ex.primaryMuscles.length === 1) {
     const m = ex.primaryMuscles[0];
-    if (m === "biceps" || m === "triceps" || m === "calves") return true;
+    if (m === "biceps" || m === "triceps" || m === "calves" || m === "traps") {
+      return true;
+    }
   }
   return false;
 }
