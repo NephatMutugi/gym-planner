@@ -5,6 +5,7 @@ import { consume, WEEKLY_CHECKIN_LIMIT } from "@/lib/rate-limit";
 import { prisma } from "@/lib/prisma";
 import { complete, isClaudeConfigured } from "@/lib/claude";
 import { EXERCISE_BY_ID } from "@/data/exercises";
+import { TRAINING_CONTEXT_LABELS, type TrainingContext } from "@/lib/program";
 
 const SYSTEM = `You are a supportive, candid strength coach checking in with someone training at home.
 Read the stats from their last two weeks of workouts and respond with:
@@ -60,7 +61,7 @@ export async function POST() {
       name: true,
       experience: true,
       goals: true,
-      postpartumWeeks: true,
+      trainingContext: true,
       injuries: true,
     },
   });
@@ -154,8 +155,8 @@ export async function POST() {
     `Name: ${user.name ?? "there"}`,
     `Experience: ${user.experience ?? "unknown"}`,
     `Goals: ${goals.join(", ") || "general fitness"}`,
-    user.postpartumWeeks != null
-      ? `Postpartum: ${user.postpartumWeeks} weeks since giving birth`
+    user.trainingContext && user.trainingContext !== "general"
+      ? `Training context: ${TRAINING_CONTEXT_LABELS[user.trainingContext as TrainingContext] ?? user.trainingContext}`
       : "",
     injuries.length > 0 ? `Things to avoid: ${injuries.join(", ")}` : "",
     "",

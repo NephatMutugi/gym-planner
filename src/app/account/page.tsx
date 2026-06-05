@@ -31,7 +31,7 @@ export default async function AccountPage() {
       experience={user.experience ?? null}
       daysPerWeek={user.daysPerWeek ?? null}
       sessionMinutes={user.sessionMinutes ?? null}
-      postpartumWeeks={user.postpartumWeeks ?? null}
+      trainingContext={user.trainingContext ?? null}
       householdName={user.household?.name ?? null}
       householdInviteCode={user.household?.inviteCode ?? null}
       equipmentCount={equipmentCount}

@@ -32,7 +32,7 @@ export default async function WorkoutPage() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { onboarded: true, postpartumWeeks: true },
+    select: { onboarded: true, trainingContext: true },
   });
   if (!user) redirect("/login");
   if (!user.onboarded) redirect("/onboarding");
@@ -63,7 +63,7 @@ export default async function WorkoutPage() {
             We&apos;ll generate a weekly plan based on your goals, schedule,
             and the equipment you own.
           </p>
-          <WorkoutClient postpartumWeeks={user.postpartumWeeks ?? null} program={null} initialDayIndex={0} />
+          <WorkoutClient trainingContext={user.trainingContext ?? null} program={null} initialDayIndex={0} />
         </div>
       </main>
     );
@@ -100,7 +100,7 @@ export default async function WorkoutPage() {
       </header>
 
       <WorkoutClient
-        postpartumWeeks={user.postpartumWeeks ?? null}
+        trainingContext={user.trainingContext ?? null}
         activeSessionByDayId={activeMap}
         program={{
           id: program.id,

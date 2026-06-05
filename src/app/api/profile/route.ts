@@ -14,6 +14,13 @@ const GOAL_OPTIONS = [
   "mobility",
   "endurance",
 ] as const;
+const TRAINING_CONTEXTS = [
+  "general",
+  "returning_from_injury",
+  "prenatal",
+  "early_postpartum",
+  "late_postpartum",
+] as const;
 
 const ProfileSchema = z.object({
   name: z.string().min(1).max(60),
@@ -26,7 +33,7 @@ const ProfileSchema = z.object({
   daysPerWeek: z.number().int().min(1).max(7),
   sessionMinutes: z.number().int().min(15).max(180),
   injuries: z.array(z.string().min(1).max(60)).max(20).default([]),
-  postpartumWeeks: z.number().int().min(0).max(260).nullable().optional(),
+  trainingContext: z.enum(TRAINING_CONTEXTS).default("general"),
 });
 
 export async function PUT(req: NextRequest) {
@@ -58,7 +65,7 @@ export async function PUT(req: NextRequest) {
       daysPerWeek: data.daysPerWeek,
       sessionMinutes: data.sessionMinutes,
       injuries: JSON.stringify(data.injuries),
-      postpartumWeeks: data.postpartumWeeks ?? null,
+      trainingContext: data.trainingContext,
       onboarded: true,
     },
     select: { id: true, onboarded: true },
@@ -85,7 +92,7 @@ export async function GET() {
       daysPerWeek: true,
       sessionMinutes: true,
       injuries: true,
-      postpartumWeeks: true,
+      trainingContext: true,
       onboarded: true,
       householdId: true,
     },

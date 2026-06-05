@@ -10,10 +10,18 @@ type Props = {
   experience: string | null;
   daysPerWeek: number | null;
   sessionMinutes: number | null;
-  postpartumWeeks: number | null;
+  trainingContext: string | null;
   householdName: string | null;
   householdInviteCode: string | null;
   equipmentCount: number;
+};
+
+const TRAINING_CONTEXT_LABEL: Record<string, string> = {
+  general: "General",
+  returning_from_injury: "Returning from injury",
+  prenatal: "Prenatal",
+  early_postpartum: "Early postpartum",
+  late_postpartum: "Late postpartum",
 };
 
 export default function AccountClient(props: Props) {
@@ -41,10 +49,12 @@ export default function AccountClient(props: Props) {
             )}
           </dd>
 
-          {props.postpartumWeeks != null && (
+          {props.trainingContext && props.trainingContext !== "general" && (
             <>
-              <dt className="text-[var(--fg-muted)]">Postpartum</dt>
-              <dd className="text-right">{props.postpartumWeeks} weeks</dd>
+              <dt className="text-[var(--fg-muted)]">Training context</dt>
+              <dd className="text-right">
+                {TRAINING_CONTEXT_LABEL[props.trainingContext] ?? props.trainingContext}
+              </dd>
             </>
           )}
 

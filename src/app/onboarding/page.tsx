@@ -37,8 +37,32 @@ type Form = {
   daysPerWeek: string;
   sessionMinutes: string;
   injuries: string[];
-  postpartumWeeks: string; // empty = N/A
+  trainingContext: string; // "general" by default; see options below
 };
+
+const TRAINING_CONTEXT_OPTIONS: { value: string; label: string; hint: string }[] = [
+  { value: "general", label: "General training", hint: "No special considerations" },
+  {
+    value: "returning_from_injury",
+    label: "Returning from injury",
+    hint: "Lighter loads, longer rest, no high-impact",
+  },
+  {
+    value: "prenatal",
+    label: "Prenatal",
+    hint: "Pregnancy-aware: no heavy bracing or deep core flexion",
+  },
+  {
+    value: "early_postpartum",
+    label: "Early postpartum (< 4 months)",
+    hint: "No high-impact, heavy bracing, or deep core flexion. Extra rest + mobility",
+  },
+  {
+    value: "late_postpartum",
+    label: "Late postpartum (4 months – 1 year)",
+    hint: "No high-impact moves",
+  },
+];
 
 const STEP_COUNT = 6;
 
@@ -69,7 +93,7 @@ export default function OnboardingPage() {
     daysPerWeek: "3",
     sessionMinutes: "45",
     injuries: [],
-    postpartumWeeks: "",
+    trainingContext: "general",
   });
 
   if (status === "loading") {
@@ -140,7 +164,7 @@ export default function OnboardingPage() {
         daysPerWeek: Number(form.daysPerWeek),
         sessionMinutes: Number(form.sessionMinutes),
         injuries: form.injuries,
-        postpartumWeeks: form.postpartumWeeks ? Number(form.postpartumWeeks) : null,
+        trainingContext: form.trainingContext || "general",
       };
       const res = await fetch("/api/profile", {
         method: "PUT",
@@ -484,25 +508,32 @@ export default function OnboardingPage() {
               Leave empty if nothing applies. You can edit these later.
             </p>
             <hr className="border-[var(--border)] my-1" />
-            <div>
-              <label className="block">
-                <span className="block text-sm mb-1.5 text-[var(--fg-muted)]">
-                  Postpartum recovery <span className="opacity-60">(optional)</span>
-                </span>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  value={form.postpartumWeeks}
-                  onChange={(e) => update("postpartumWeeks", e.target.value)}
-                  min={0}
-                  max={260}
-                  placeholder="Weeks since giving birth"
-                />
-                <span className="block text-xs text-[var(--fg-muted)] mt-1.5">
-                  If set, we&apos;ll skip high-impact and heavy-bracing exercises and lean into mobility, glute activation, and breathing-based core. Always clear return-to-exercise with your healthcare provider.
-                </span>
-              </label>
-            </div>
+            <fieldset>
+              <legend className="block text-sm mb-1.5 text-[var(--fg-muted)]">
+                Training context <span className="opacity-60">(optional)</span>
+              </legend>
+              <div className="flex flex-col gap-2">
+                {TRAINING_CONTEXT_OPTIONS.map((opt) => (
+                  <button
+                    type="button"
+                    key={opt.value}
+                    onClick={() => update("trainingContext", opt.value)}
+                    className={
+                      "rounded-xl border px-4 py-3 text-left " +
+                      (form.trainingContext === opt.value
+                        ? "border-[var(--accent)] bg-[var(--bg-elev)]"
+                        : "border-[var(--border)] bg-[var(--bg-elev)]")
+                    }
+                  >
+                    <div className="font-medium">{opt.label}</div>
+                    <div className="text-xs text-[var(--fg-muted)] mt-0.5">{opt.hint}</div>
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-[var(--fg-muted)] mt-1.5">
+                Tunes exercise selection and rest periods. Always clear return-to-exercise with your healthcare provider if any of these apply.
+              </p>
+            </fieldset>
 
           </div>
         )}

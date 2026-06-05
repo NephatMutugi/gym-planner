@@ -86,7 +86,12 @@ model User {
   daysPerWeek    Int?
   sessionMinutes Int?
   injuries        String?
-  postpartumWeeks Int? // weeks since giving birth, null = N/A
+  // Training context: drives recovery-aware filtering + rest tuning in the
+  // program generator. One of: general | returning_from_injury | prenatal |
+  // early_postpartum | late_postpartum. "general" (or null) is the default
+  // and applies no special filtering. See src/lib/program.ts for the
+  // tag-filter map keyed off this field.
+  trainingContext String? @default("general")
   onboarded      Boolean @default(false)
 
   householdId String?

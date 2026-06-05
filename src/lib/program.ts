@@ -5,6 +5,7 @@ import {
   EXERCISE_BY_ID,
   EXERCISES,
   type Exercise,
+  type ExerciseTag,
 } from "@/data/exercises";
 import { availableExercises, prescribeLoad, type Inventory } from "@/lib/equipment";
 import {
@@ -23,6 +24,27 @@ export type Goal =
 
 export type Experience = "beginner" | "intermediate" | "advanced";
 
+// Recovery-aware programming flag. Drives both exercise filtering and rest
+// tuning. "general" applies no special considerations. Other values map to
+// tag filters defined in CONTEXT_FILTERS below.
+export type TrainingContext =
+  | "general"
+  | "returning_from_injury"
+  | "prenatal"
+  | "early_postpartum"
+  | "late_postpartum";
+
+// Human-readable labels for displaying training context in the UI and
+// passing as context to Claude. "general" is intentionally empty — we
+// don't surface it as a special tag.
+export const TRAINING_CONTEXT_LABELS: Record<TrainingContext, string> = {
+  general: "",
+  returning_from_injury: "Returning from injury",
+  prenatal: "Prenatal",
+  early_postpartum: "Early postpartum (< 4 months)",
+  late_postpartum: "Late postpartum (4–12 months)",
+};
+
 export interface ProfileInput {
   bodyweightKg: number | null;
   experience: Experience;
@@ -30,7 +52,7 @@ export interface ProfileInput {
   daysPerWeek: number;
   sessionMinutes: number;
   injuries?: string[];
-  postpartumWeeks?: number | null;
+  trainingContext?: TrainingContext | null;
 }
 
 export interface GeneratedItem {
@@ -212,23 +234,45 @@ function adjustForExperience(shape: PrescriptionShape, xp: Experience): Prescrip
   return out;
 }
 
-// Postpartum rest buffer. Adds +30s to main and accessory rest periods on
-// loaded work for the first ~4 months postpartum. Rationale: longer rest
-// between loaded sets reduces cumulative intra-abdominal pressure and gives
-// pelvic-floor + deep core time to re-engage between sets (Bø et al. 2017
-// IOC consensus; clinical PT practice). Finisher and iso rest are left
-// alone — they're already short and not load-dominant.
-function adjustForPostpartum(
+// Recovery rest buffer. Adds +30s to main and accessory rest periods on
+// loaded work for users in a recovery context — postpartum (early or late),
+// prenatal, or returning from injury. Rationale: longer rest between loaded
+// sets reduces cumulative intra-abdominal pressure (postpartum / prenatal)
+// and gives joints / connective tissue extra recovery between sets (return
+// from injury). Originally formulated for postpartum (Bø et al. 2017 IOC
+// consensus; clinical PT practice), generalized here. Finisher and iso rest
+// are left alone — they're already short and not load-dominant.
+function adjustForRecoveryContext(
   shape: PrescriptionShape,
-  postpartumWeeks: number | null | undefined
+  context: TrainingContext | null | undefined
 ): PrescriptionShape {
-  if (postpartumWeeks == null || postpartumWeeks >= 16) return shape;
+  const recoveryContexts: TrainingContext[] = [
+    "returning_from_injury",
+    "prenatal",
+    "early_postpartum",
+    "late_postpartum",
+  ];
+  if (!context || !recoveryContexts.includes(context)) return shape;
+  // Late postpartum is gentler — no need for the full +30s by that point.
+  if (context === "late_postpartum") return shape;
   return {
     ...shape,
     mainRestSec: shape.mainRestSec + 30,
     accessoryRestSec: shape.accessoryRestSec + 30,
   };
 }
+
+// Maps a training context to the set of exercise tags that should be
+// filtered out. Each context picks the tags inappropriate for that state
+// (high-impact + heavy-bracing for anyone in recovery; deep core flexion
+// for pregnancy / early postpartum).
+const CONTEXT_FILTERS: Record<TrainingContext, ExerciseTag[]> = {
+  general: [],
+  returning_from_injury: ["high_impact", "heavy_brace"],
+  prenatal: ["high_impact", "heavy_brace", "deep_core_flexion"],
+  early_postpartum: ["high_impact", "heavy_brace", "deep_core_flexion"],
+  late_postpartum: ["high_impact"],
+};
 
 // ---- Session-length budget ----
 // Rough heuristic: ~8 minutes per exercise including rest and inter-set work.
@@ -381,15 +425,10 @@ function pickExercise(
 
 
 // Tags excluded from the available pool based on profile modifications.
+// Driven entirely off trainingContext via CONTEXT_FILTERS.
 function exclusionTagsFor(profile: ProfileInput): Set<string> {
-  const excluded = new Set<string>();
-  const ppw = profile.postpartumWeeks;
-  if (ppw != null && ppw < 16) {
-    excluded.add("high_impact");
-    excluded.add("heavy_brace");
-    excluded.add("deep_core_flexion");
-  }
-  return excluded;
+  const ctx = profile.trainingContext ?? "general";
+  return new Set(CONTEXT_FILTERS[ctx] ?? []);
 }
 
 function filterExercisesForProfile(
@@ -404,7 +443,12 @@ function filterExercisesForProfile(
 }
 
 function isMobilityFocus(profile: ProfileInput): boolean {
-  if (profile.postpartumWeeks != null && profile.postpartumWeeks < 16) return true;
+  if (
+    profile.trainingContext === "early_postpartum" ||
+    profile.trainingContext === "prenatal"
+  ) {
+    return true;
+  }
   return profile.goals[0] === "mobility" || profile.goals.includes("mobility");
 }
 
@@ -421,9 +465,9 @@ export function generateProgram(
   const goals = (profile.goals.length > 0 ? profile.goals : ["general_fitness"]) as Goal[];
   const template = templateForDays(profile.daysPerWeek);
   const available = filterExercisesForProfile(availableExercises(inventory), profile);
-  const shape = adjustForPostpartum(
+  const shape = adjustForRecoveryContext(
     adjustForExperience(combinePrescriptions(goals), profile.experience),
-    profile.postpartumWeeks
+    profile.trainingContext
   );
   const budget = exerciseBudget(profile.sessionMinutes);
 

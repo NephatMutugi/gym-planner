@@ -2,7 +2,12 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { generateProgram, type Goal, type Experience } from "@/lib/program";
+import {
+  generateProgram,
+  type Goal,
+  type Experience,
+  type TrainingContext,
+} from "@/lib/program";
 import { inventoryFromDb } from "@/lib/equipment";
 
 type EquipmentRow = {
@@ -102,7 +107,7 @@ export async function POST() {
       daysPerWeek: true,
       sessionMinutes: true,
       injuries: true,
-      postpartumWeeks: true,
+      trainingContext: true,
       householdId: true,
     },
   });
@@ -136,7 +141,7 @@ export async function POST() {
       daysPerWeek: user.daysPerWeek,
       sessionMinutes: user.sessionMinutes,
       injuries,
-      postpartumWeeks: user.postpartumWeeks ?? null,
+      trainingContext: (user.trainingContext ?? "general") as TrainingContext,
     },
     inventory
   );

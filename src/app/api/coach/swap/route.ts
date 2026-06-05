@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { complete, isClaudeConfigured, extractJson } from "@/lib/claude";
 import { inventoryFromDb, availableExercises } from "@/lib/equipment";
 import { EXERCISE_BY_ID, MUSCLE_LABELS, PATTERN_LABELS } from "@/data/exercises";
+import { TRAINING_CONTEXT_LABELS, type TrainingContext } from "@/lib/program";
 
 const Schema = z.object({
   exerciseId: z.string(),
@@ -68,7 +69,7 @@ export async function POST(req: NextRequest) {
     select: {
       experience: true,
       goals: true,
-      postpartumWeeks: true,
+      trainingContext: true,
       injuries: true,
       householdId: true,
     },
@@ -121,9 +122,9 @@ export async function POST(req: NextRequest) {
     "User profile:",
     `- Experience: ${user.experience ?? "unknown"}`,
     `- Goals: ${goals.join(", ") || "general fitness"}`,
-    user.postpartumWeeks != null
-      ? `- Postpartum: ${user.postpartumWeeks} weeks since giving birth`
-      : "- Postpartum: N/A",
+    user.trainingContext && user.trainingContext !== "general"
+      ? `- Training context: ${TRAINING_CONTEXT_LABELS[user.trainingContext as TrainingContext] ?? user.trainingContext}`
+      : "",
     `- Injuries / things to avoid: ${injuries.join(", ") || "none reported"}`,
     "",
     "Candidate exercises (pick one):",

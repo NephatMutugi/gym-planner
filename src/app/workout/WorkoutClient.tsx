@@ -5,6 +5,28 @@ import { useRouter } from "next/navigation";
 import { EXERCISE_BY_ID, MUSCLE_LABELS, type Muscle } from "@/data/exercises";
 import ExerciseDemoButton from "@/components/ExerciseDemoButton";
 
+// Context-specific banner copy. The keys mirror the TrainingContext enum
+// values from src/lib/program.ts. "general" is intentionally absent — we
+// don't show a banner for that case.
+const CONTEXT_BANNER: Record<string, { title: string; body: string }> = {
+  returning_from_injury: {
+    title: "Recovery-aware programming",
+    body: "High-impact moves and heavy bracing are filtered out. Rest periods on loaded sets are extended to give joints and connective tissue more time to recover. Listen to your body and clear return-to-exercise with your healthcare provider.",
+  },
+  prenatal: {
+    title: "Prenatal-aware programming",
+    body: "High-impact, heavy-bracing, and deep core flexion exercises are filtered out. Your program includes extra mobility. Always clear return-to-exercise with your healthcare provider, especially in the second and third trimesters.",
+  },
+  early_postpartum: {
+    title: "Early postpartum-aware programming",
+    body: "High-impact moves, heavy bracing, and deep core flexion are filtered out. Your program includes extra mobility and glute activation. Listen to your body and check with your healthcare provider before pushing intensity — especially if you have diastasis or pelvic-floor concerns.",
+  },
+  late_postpartum: {
+    title: "Postpartum-aware programming",
+    body: "High-impact moves are filtered out as you continue rebuilding capacity. Other movement patterns are unrestricted, but stay attentive to pelvic-floor symptoms and clear return-to-impact with your healthcare provider.",
+  },
+};
+
 type Item = {
   order: number;
   exerciseId: string;
@@ -37,12 +59,12 @@ type Program = {
 export default function WorkoutClient({
   program,
   initialDayIndex,
-  postpartumWeeks,
+  trainingContext,
   activeSessionByDayId,
 }: {
   program: Program | null;
   initialDayIndex: number;
-  postpartumWeeks: number | null;
+  trainingContext: string | null;
   activeSessionByDayId?: Record<string, string>;
 }) {
   const router = useRouter();
@@ -137,17 +159,15 @@ export default function WorkoutClient({
       </div>
 
 
-      {postpartumWeeks != null && postpartumWeeks < 16 && (
+      {trainingContext && trainingContext !== "general" && (
         <div
           className="card text-sm"
           style={{ borderColor: "var(--accent)" }}
         >
-          <p className="font-semibold">Postpartum-aware programming</p>
+          <p className="font-semibold">{CONTEXT_BANNER[trainingContext]?.title ?? "Recovery-aware programming"}</p>
           <p className="text-[var(--fg-muted)] mt-1.5">
-            High-impact moves and heavy bracing are filtered out. Your program
-            includes extra mobility and glute activation. Listen to your body
-            and check with your healthcare provider before pushing intensity —
-            especially if you have diastasis or pelvic-floor concerns.
+            {CONTEXT_BANNER[trainingContext]?.body ??
+              "Your program is tuned for recovery — certain movement patterns are filtered out and rest is extended on loaded sets. Listen to your body and check with your healthcare provider before pushing intensity."}
           </p>
         </div>
       )}

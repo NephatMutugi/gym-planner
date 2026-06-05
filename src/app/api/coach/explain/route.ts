@@ -6,6 +6,7 @@ import { consume, COACH_LIMIT } from "@/lib/rate-limit";
 import { prisma } from "@/lib/prisma";
 import { complete, isClaudeConfigured } from "@/lib/claude";
 import { EXERCISE_BY_ID, MUSCLE_LABELS } from "@/data/exercises";
+import { TRAINING_CONTEXT_LABELS, type TrainingContext } from "@/lib/program";
 
 const Schema = z.object({
   exerciseId: z.string(),
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
     select: {
       experience: true,
       goals: true,
-      postpartumWeeks: true,
+      trainingContext: true,
       injuries: true,
     },
   });
@@ -76,9 +77,9 @@ export async function POST(req: NextRequest) {
     "User profile:",
     `- Experience: ${user.experience ?? "unknown"}`,
     `- Goals: ${goals.join(", ") || "general fitness"}`,
-    user.postpartumWeeks != null
-      ? `- Postpartum: ${user.postpartumWeeks} weeks since giving birth`
-      : "- Postpartum: N/A",
+    user.trainingContext && user.trainingContext !== "general"
+      ? `- Training context: ${TRAINING_CONTEXT_LABELS[user.trainingContext as TrainingContext] ?? user.trainingContext}`
+      : "",
     `- Injuries / things to avoid: ${injuries.join(", ") || "none reported"}`,
     "",
     parsed.data.question
